@@ -190,11 +190,11 @@
   table.ledger tr:hover td{ background: rgba(255,201,77,0.04); }
   .saldo{ font-weight:600; }
   .acoes-linha{ display:flex; gap:6px; flex-wrap:wrap; }
-  .btn-aba-loja{
+  .btn-aba-loja, .btn-aba-cfg{
     background: transparent; color: var(--ink-soft); border:1px solid rgba(var(--border-rgb),0.2);
     font-family:'Baloo 2',sans-serif; font-weight:600; padding:9px 18px; border-radius:10px;
   }
-  .btn-aba-loja.aba-loja-ativa{ background: var(--gradiente-alegre); color:#fff; border-color:transparent; }
+  .btn-aba-loja.aba-loja-ativa, .btn-aba-cfg.aba-cfg-ativa{ background: var(--gradiente-alegre); color:#fff; border-color:transparent; }
 
   .cartao{
     background: var(--bg-900); border:1px solid rgba(255,201,77,0.18);
@@ -257,8 +257,8 @@
      ===================================================================== -->
 <script>
   const CONFIG = {
-    SUPABASE_URL: "https://qdleehomiwzyeinegoge.supabase.co",       // ex: https://xxxxx.supabase.co
-    SUPABASE_ANON_KEY: "sb_publishable_wHsFgwOuu5f9Oo7-oe805g_4W2n1s54" // encontrada em Project Settings > API
+    SUPABASE_URL: "https://aqwvnpspejwsqqwbzaxq.supabase.co/rest/v1/",
+    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxd3ZucHNwZWp3c3Fxd2J6YXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1OTM1NDYsImV4cCI6MjEwMzE2OTU0Nn0.-0b_g2cHu_RQrDduAgpUQUeE_sMUC6j3fIN8wzkdEjc"
   };
 </script>
 <!-- ===================================================================== -->
@@ -371,6 +371,15 @@
       <button class="btn-ghost btn-small" id="btn-voltar-app">← Voltar ao painel</button>
     </div>
 
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+      <button class="btn-aba-cfg aba-cfg-ativa" data-aba-cfg="juros">📈 Juros & Planos</button>
+      <button class="btn-aba-cfg" data-aba-cfg="lote">💰 Ações em Lote</button>
+      <button class="btn-aba-cfg" data-aba-cfg="taxas">⚠️ Taxas</button>
+      <button class="btn-aba-cfg" data-aba-cfg="importar">📥 Importar Planilha</button>
+      <button class="btn-aba-cfg" data-aba-cfg="usuarios">👥 Usuários</button>
+    </div>
+
+    <div id="cfg-aba-juros">
     <div class="cartao">
       <h3>📈 Juros Pedagógicos Automáticos</h3>
       <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:14px; color:var(--paper); margin-bottom:14px;">
@@ -435,7 +444,9 @@
       <button id="btn-atribuir-pacote" class="btn-gold btn-small">Atribuir aos selecionados</button>
       <div class="erro-modal" id="atribuir-erro"></div>
     </div>
+    </div>
 
+    <div id="cfg-aba-lote" class="hidden">
     <div class="cartao">
       <h3>💰 Depósito em lote</h3>
       <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
@@ -457,7 +468,9 @@
       <button id="btn-lote-depositar" class="btn-gold btn-small">💰 Depositar para selecionados</button>
       <div class="erro-modal" id="lote-erro"></div>
     </div>
+    </div>
 
+    <div id="cfg-aba-taxas" class="hidden">
     <div class="cartao">
       <h3>⚠️ Taxas e Consequências</h3>
       <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
@@ -500,18 +513,62 @@
       <button id="btn-aplicar-taxa" class="btn-gold btn-small">Aplicar aos selecionados</button>
       <div class="erro-modal" id="taxa-erro"></div>
     </div>
+    </div>
 
+    <div id="cfg-aba-importar" class="hidden">
     <div class="cartao">
       <h3>📥 Importar turma por planilha</h3>
       <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
         Cadastre vários alunos de uma vez a partir de uma planilha Excel com as colunas
-        <strong>Turma, Número, RA, Nome</strong>. Turmas que ainda não existem são criadas automaticamente.
+        <strong>Turma, Nº de chamada, Nome do Aluno, RA, Dígito RA, Data de Nascimento,
+        Email Microsoft, Email Google, Situação do Aluno, Saldo Inicial, Data Base dos
+        Juros</strong>. Turmas que ainda não existem são criadas automaticamente.
+        Saldo Inicial e Data Base dos Juros são opcionais — deixe em branco (ou 0) se o
+        aluno começa zerado com a data de hoje.
       </p>
       <button id="btn-baixar-modelo" class="btn-ghost btn-small" style="margin-bottom:14px;">⬇️ Baixar planilha modelo</button>
       <div class="field"><label>Arquivo (.xlsx)</label><input type="file" id="importar-arquivo" accept=".xlsx,.xls"></div>
       <div id="importar-preview" style="margin:12px 0; font-size:13px;"></div>
       <button id="btn-confirmar-importacao" class="btn-gold btn-small hidden">✅ Confirmar importação</button>
       <div class="erro-modal" id="importar-erro"></div>
+    </div>
+    </div>
+
+    <div id="cfg-aba-usuarios" class="hidden">
+    <div class="cartao">
+      <h3>👥 Usuários e Cargos</h3>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
+        Só visível e funcional para quem tem cargo <strong>superadmin</strong>. Aqui você atribui o cargo
+        de uma conta já criada no Supabase — a criação da conta em si (e-mail + senha) ainda é feita lá,
+        por segurança (veja o guia de instalação). Depois de criar a conta, volte aqui e diga qual cargo
+        ela tem: professor, diretor, vendedor ou superadmin.
+      </p>
+      <div id="usuarios-sem-permissao" class="hidden" style="font-size:13.5px; color:var(--ink-soft);">
+        Sua conta não tem cargo <strong>superadmin</strong> — esta aba é só de consulta visual.
+      </div>
+      <div id="usuarios-conteudo">
+        <table class="ledger" style="margin-bottom:20px;">
+          <thead><tr><th>E-mail</th><th>Cargo</th><th>Desde</th></tr></thead>
+          <tbody id="corpo-usuarios"></tbody>
+        </table>
+
+        <h3 style="font-size:14px;">✨ Atribuir cargo</h3>
+        <div class="grid-2">
+          <div class="field"><label>E-mail (já criado no Supabase)</label><input type="email" id="novo-usuario-email" placeholder="nome@escola.gov.br"></div>
+          <div class="field">
+            <label>Cargo</label>
+            <select id="novo-usuario-cargo">
+              <option value="professor">Professor(a)</option>
+              <option value="diretor">Diretor(a)</option>
+              <option value="vendedor">Vendedor (só caixa da loja)</option>
+              <option value="superadmin">Superadmin</option>
+            </select>
+          </div>
+        </div>
+        <button id="btn-atribuir-cargo" class="btn-gold btn-small">Atribuir cargo</button>
+        <div class="erro-modal" id="usuarios-erro"></div>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -838,6 +895,7 @@ let pacotesCache = [];
 let turmasCache = [];
 let motivosCache = [];
 let ultimoRelatorio = [];
+let cargoUsuarioAtual = 'professor';
 
 function toast(msg, erro=false){
   const el = document.createElement('div');
@@ -870,8 +928,8 @@ async function entrarNoApp(){
   $('tela-app').classList.remove('hidden');
   $('info-usuario').classList.remove('hidden');
   $('email-usuario').textContent = session.user.email;
-  const cargo = session.user.user_metadata?.cargo || 'Professor(a)';
-  $('badge-cargo').textContent = cargo;
+  cargoUsuarioAtual = session.user.user_metadata?.cargo || 'professor';
+  $('badge-cargo').textContent = cargoUsuarioAtual;
   await carregarPacotesCache();
   await carregarTurmas();
 }
@@ -1444,7 +1502,57 @@ async function abrirTelaConfig(){
   popularSelectEscopo('taxa-turma-select', async (escopo) => {
     renderListaCheckbox('taxa-lista-alunos', await carregarAlunosPorEscopo(escopo), escopo === 'todas');
   });
+  await carregarAbaUsuarios();
 }
+
+document.querySelectorAll('.btn-aba-cfg').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-aba-cfg').forEach(b => b.classList.remove('aba-cfg-ativa'));
+    btn.classList.add('aba-cfg-ativa');
+    ['juros','lote','taxas','importar','usuarios'].forEach(aba => {
+      $('cfg-aba-' + aba).classList.toggle('hidden', btn.dataset.abaCfg !== aba);
+    });
+  });
+});
+
+// ---------------------------------------------------------------- USUÁRIOS E CARGOS (superadmin)
+async function carregarAbaUsuarios(){
+  const { data: { session } } = await supabase.auth.getSession();
+  const souSuperadmin = session?.user?.user_metadata?.cargo === 'superadmin';
+
+  $('usuarios-sem-permissao').classList.toggle('hidden', souSuperadmin);
+  $('usuarios-conteudo').classList.toggle('hidden', !souSuperadmin);
+  if (!souSuperadmin) return;
+
+  const { data, error } = await supabase.rpc('fn_listar_perfis_usuario');
+  const corpo = $('corpo-usuarios');
+  if (error) { corpo.innerHTML = `<tr><td colspan="3">Erro: ${error.message}</td></tr>`; return; }
+
+  const rotuloCargo = { professor: 'Professor(a)', diretor: 'Diretor(a)', vendedor: 'Vendedor', superadmin: 'Superadmin' };
+  corpo.innerHTML = (data || []).map(u => `
+    <tr>
+      <td>${u.email}</td>
+      <td>${rotuloCargo[u.cargo] || u.cargo}</td>
+      <td class="mono" style="font-size:12px;">${new Date(u.criado_em).toLocaleDateString('pt-BR')}</td>
+    </tr>`).join('') || '<tr><td colspan="3" style="color:var(--ink-soft);">Nenhum cargo atribuído ainda.</td></tr>';
+}
+
+$('btn-atribuir-cargo').addEventListener('click', async () => {
+  const erroEl = $('usuarios-erro');
+  erroEl.textContent = '';
+  const email = $('novo-usuario-email').value.trim();
+  const cargo = $('novo-usuario-cargo').value;
+  if (!email) { erroEl.textContent = 'Informe o e-mail.'; return; }
+
+  if (!confirm(`Confirma atribuir o cargo "${$('novo-usuario-cargo').selectedOptions[0].textContent}" para ${email}?`)) return;
+
+  const { error } = await supabase.rpc('fn_registrar_perfil_usuario', { p_email: email, p_cargo: cargo });
+  if (error) { erroEl.textContent = error.message.replace(/^.*: /, ''); return; }
+
+  $('novo-usuario-email').value = '';
+  await carregarAbaUsuarios();
+  toast(`✅ Cargo atribuído a ${email}. A pessoa precisa sair e entrar de novo para o cargo valer.`);
+});
 
 async function carregarConfigGeral(){
   const { data, error } = await supabase.from('configuracoes').select('*').eq('id', 1).single();
@@ -1801,9 +1909,9 @@ let linhasImportacao = [];
 
 $('btn-baixar-modelo').addEventListener('click', () => {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Turma', 'Nº de chamada', 'Nome do Aluno', 'RA', 'Dígito do RA', 'Data de Nascimento', 'Email Microsoft', 'Email Google', 'Situação'],
-    ['6ºA', 1, 'Exemplo de Aluno', '2026001', '8', '2013-05-20', 'exemplo.aluno@escola.onmicrosoft.com', 'exemplo.aluno@escola.org', 'Ativo'],
-    ['6ºA', 2, 'Outro Aluno Exemplo', '2026002', '3', '2013-08-11', 'outro.aluno@escola.onmicrosoft.com', 'outro.aluno@escola.org', 'Ativo']
+    ['Turma', 'Nº de chamada', 'Nome do Aluno', 'RA', 'Dígito do RA', 'Data de Nascimento', 'Email Microsoft', 'Email Google', 'Situação', 'Saldo Inicial', 'Data Base dos Juros'],
+    ['6ºA', 1, 'Exemplo de Aluno', '2026001', '8', '2013-05-20', 'exemplo.aluno@escola.onmicrosoft.com', 'exemplo.aluno@escola.org', 'Ativo', 50, '2026-02-01'],
+    ['6ºA', 2, 'Outro Aluno Exemplo', '2026002', '3', '2013-08-11', 'outro.aluno@escola.onmicrosoft.com', 'outro.aluno@escola.org', 'Ativo', 0, '']
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Alunos');
@@ -1831,6 +1939,8 @@ $('importar-arquivo').addEventListener('change', (e) => {
 
       linhasImportacao = linhas.map(l => {
         const situacaoTexto = String(l['Situação'] ?? '').trim().toLowerCase();
+        const saldoTexto = String(l['Saldo Inicial'] ?? '').trim().replace(',', '.');
+        const dataBaseTexto = String(l['Data Base dos Juros'] ?? '').trim();
         return {
           turma: String(l['Turma'] ?? '').trim(),
           numero: l['Nº de chamada'] !== '' && l['Nº de chamada'] != null ? parseInt(l['Nº de chamada'], 10) : null,
@@ -1840,7 +1950,9 @@ $('importar-arquivo').addEventListener('change', (e) => {
           data_nascimento: String(l['Data de Nascimento'] ?? '').trim() || null,
           email_microsoft: String(l['Email Microsoft'] ?? '').trim() || null,
           email_google: String(l['Email Google'] ?? '').trim() || null,
-          situacao: mapaSituacaoImportacao[situacaoTexto] || 'ativo'
+          situacao: mapaSituacaoImportacao[situacaoTexto] || 'ativo',
+          saldo_inicial: saldoTexto && !isNaN(parseFloat(saldoTexto)) ? parseFloat(saldoTexto) : 0,
+          data_base_juros: dataBaseTexto || null
         };
       }).filter(l => l.turma && l.nome);
 
@@ -1865,7 +1977,7 @@ $('importar-arquivo').addEventListener('change', (e) => {
 $('btn-confirmar-importacao').addEventListener('click', async () => {
   const erroEl = $('importar-erro');
   erroEl.textContent = '';
-  let criados = 0, comErro = 0;
+  let criados = 0, comErro = 0, comAvisoJuros = 0;
 
   const turmasUnicas = [...new Set(linhasImportacao.map(l => l.turma))];
   const idsTurma = {};
@@ -1880,19 +1992,48 @@ $('btn-confirmar-importacao').addEventListener('click', async () => {
     idsTurma[nomeTurma] = existente.id;
   }
 
+  const pacoteBasico = pacotesCache.find(p => p.tipo === 'base');
+
   for (const linha of linhasImportacao) {
     const turmaId = idsTurma[linha.turma];
     if (!turmaId) { comErro++; continue; }
-    const { error } = await supabase.from('alunos').insert({
+
+    const { data: novoAluno, error } = await supabase.from('alunos').insert({
       nome: linha.nome, numero: linha.numero, ra: linha.ra, turma_id: turmaId,
       ra_digito: linha.ra_digito, data_nascimento: linha.data_nascimento,
       email_microsoft: linha.email_microsoft, email_google: linha.email_google,
       situacao: linha.situacao
-    });
-    if (error) comErro++; else criados++;
+    }).select('id').single();
+
+    if (error) { comErro++; continue; }
+    criados++;
+
+    // saldo inicial (opcional) — vira um depósito auditável no extrato
+    if (linha.saldo_inicial > 0) {
+      await supabase.rpc('fn_depositar', {
+        p_aluno_id: novoAluno.id, p_valor: linha.saldo_inicial, p_descricao: 'Saldo inicial (importação)'
+      });
+    }
+
+    // data base dos juros do plano básico (opcional) — corrige a data de
+    // início do pacote básico que é atribuído automaticamente ao aluno
+    if (linha.data_base_juros && pacoteBasico) {
+      const { data: contaDoAluno } = await supabase.from('contas').select('id').eq('aluno_id', novoAluno.id).single();
+      if (contaDoAluno) {
+        const { error: errData } = await supabase.from('conta_pacotes')
+          .update({ data_inicio: linha.data_base_juros })
+          .eq('conta_id', contaDoAluno.id)
+          .eq('pacote_id', pacoteBasico.id);
+        if (errData) comAvisoJuros++;
+      }
+    }
   }
 
-  toast(`Importação concluída: ${criados} aluno(s) criado(s)${comErro ? `, ${comErro} com erro (duplicado ou inválido)` : ''}.`);
+  let mensagem = `Importação concluída: ${criados} aluno(s) criado(s)`;
+  if (comErro) mensagem += `, ${comErro} com erro (duplicado ou inválido)`;
+  if (comAvisoJuros) mensagem += `, ${comAvisoJuros} sem conseguir ajustar a data base dos juros`;
+  toast(mensagem + '.');
+
   $('importar-arquivo').value = '';
   $('importar-preview').innerHTML = '';
   $('btn-confirmar-importacao').classList.add('hidden');
