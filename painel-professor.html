@@ -251,7 +251,7 @@
 </head>
 <body>
 
-<!-- ====================================================================
+<!-- =====================================================================
      CONFIGURAÇÃO — edite apenas esta seção para ligar o painel ao seu
      projeto Supabase. Não é preciso mexer em mais nada abaixo.
      ===================================================================== -->
@@ -865,6 +865,15 @@ function escanearQRCode(containerEl){
 
 const fmt = (n) => 'WL ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Alguns tipos guardam o valor já com o sinal real (ex: rendimento pode ser
+// negativo). Nesses casos o sinal exibido vem do próprio número, não do tipo.
+const TIPOS_SINAL_PROPRIO = ['rendimento_automatico', 'rendimento_manual'];
+const TIPOS_DEBITO = ['saque','transferencia_enviada','taxa_debito','estorno_debito','compra_loja','pix_qrcode'];
+function calcularSinalClasse(tipo, valor){
+  const negativo = TIPOS_SINAL_PROPRIO.includes(tipo) ? Number(valor) < 0 : TIPOS_DEBITO.includes(tipo);
+  return { sinal: negativo ? '-' : '+', classe: negativo ? 'valor-neg' : 'valor-pos' };
+}
+
 // ---------------------------------------------------------------- DICA DO DIA (professor)
 const dicasProfessor = [
   '🎓 <strong>Educação financeira na prática:</strong> use depósitos, juros e taxas para reconhecer bons hábitos e criar consequências simbólicas — o objetivo é motivar, não punir de verdade.',
@@ -1124,8 +1133,24 @@ const rotulosSituacao = {
 
 function editarAluno(aluno){ abrirModalAluno(aluno); }
 
-function abrirModalAluno(alunoExistente){
+async function abrirModalAluno(alunoExistente){
   const editando = !!alunoExistente;
+  let contaId = null, pacoteBasicoId = null, dataBaseAtual = '';
+
+  if (editando) {
+    const { data: conta } = await supabase.from('contas').select('id').eq('aluno_id', alunoExistente.id).single();
+    if (conta) {
+      contaId = conta.id;
+      const pacoteBasico = pacotesCache.find(p => p.tipo === 'base');
+      if (pacoteBasico) {
+        pacoteBasicoId = pacoteBasico.id;
+        const { data: cp } = await supabase.from('conta_pacotes').select('data_inicio')
+          .eq('conta_id', contaId).eq('pacote_id', pacoteBasicoId).eq('ativo', true).maybeSingle();
+        if (cp) dataBaseAtual = cp.data_inicio;
+      }
+    }
+  }
+
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.innerHTML = `
@@ -1162,6 +1187,17 @@ function abrirModalAluno(alunoExistente){
       </div>
       <button class="btn-gold" id="aluno-salvar" style="width:100%;">${editando ? 'Salvar alterações' : '+ Cadastrar aluno'}</button>
       <div class="erro-modal" id="aluno-erro"></div>
+      ${editando && contaId && pacoteBasicoId ? `
+        <hr style="border:none; border-top:1px solid rgba(var(--border-rgb),0.15); margin:18px 0;">
+        <h3 style="font-size:14px;">📈 Data base dos juros — Pacote Básico</h3>
+        <p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 10px;">
+          Data no passado: aplica os juros retroativos, dia a dia, até hoje.
+          Data no futuro: os juros só começam a contar a partir dela.
+        </p>
+        <div class="field"><input type="date" id="aluno-data-base" value="${dataBaseAtual}"></div>
+        <button class="btn-ghost btn-small" id="aluno-recalcular-juros" style="width:100%;">🔄 Salvar data e recalcular juros</button>
+        <div class="erro-modal" id="aluno-juros-resultado"></div>
+      ` : ''}
     </div>`;
   document.body.appendChild(overlay);
   $('aluno-fechar').addEventListener('click', () => overlay.remove());
@@ -1214,6 +1250,32 @@ function abrirModalAluno(alunoExistente){
     await carregarAlunos();
     toast(editando ? `✅ ${nome} atualizado.` : `✅ ${nome} cadastrado.`);
   });
+
+  if (editando && contaId && pacoteBasicoId) {
+    $('aluno-recalcular-juros').addEventListener('click', async () => {
+      const resEl = $('aluno-juros-resultado');
+      resEl.textContent = '';
+      const novaData = $('aluno-data-base').value;
+      if (!novaData) { resEl.textContent = 'Escolha uma data.'; return; }
+
+      const ehPassado = novaData < new Date().toISOString().slice(0,10);
+      const aviso = ehPassado
+        ? `Isso vai lançar o rendimento diário retroativo do Pacote Básico, dia a dia, de ${novaData} até hoje, com base no saldo atual. Só faça isso uma vez — repetir a ação soma os juros em dobro. Confirma?`
+        : `Confirma alterar a data base do Pacote Básico para ${novaData}?`;
+      if (!confirm(aviso)) return;
+
+      const { data: resultado, error } = await supabase.rpc('fn_definir_data_base_pacote', {
+        p_conta_id: contaId, p_pacote_id: pacoteBasicoId, p_nova_data: novaData
+      });
+      if (error) { resEl.textContent = error.message.replace(/^.*: /, ''); return; }
+
+      overlay.remove();
+      await carregarAlunos();
+      toast(resultado.dias_aplicados > 0
+        ? `✅ Data base atualizada — ${resultado.dias_aplicados} dia(s) de juros retroativo aplicados (${fmt(resultado.total_juros)}).`
+        : `✅ Data base atualizada.`);
+    });
+  }
 }
 
 // ---------------------------------------------------------------- MODAIS
@@ -1426,14 +1488,13 @@ async function carregarExtrato(alunoId){
     transferencia_enviada:'PIX enviado', transferencia_recebida:'PIX recebido',
     rendimento_automatico:'Juros pedagógico automático', rendimento_manual:'Juros pedagógico manual',
     taxa_debito:'Taxa aplicada', taxa_bonus:'Bônus aplicado',
-    estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)'
+    estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)',
+    compra_loja:'Compra na loja', estorno_compra:'Estorno de compra', pix_qrcode:'PIX (QR Code)'
   };
-  const negativos = ['saque','transferencia_enviada','taxa_debito','estorno_debito'];
   const reversiveis = ['deposito','saque','transferencia_enviada','transferencia_recebida','rendimento_automatico','rendimento_manual','taxa_debito','taxa_bonus'];
 
   cont.innerHTML = data.map(t => {
-    const sinal = negativos.includes(t.tipo) ? '-' : '+';
-    const classe = negativos.includes(t.tipo) ? 'valor-neg' : 'valor-pos';
+    const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
     const quando = new Date(t.criado_em).toLocaleString('pt-BR');
 
     let linhasExtra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
@@ -1462,7 +1523,7 @@ async function carregarExtrato(alunoId){
         <div class="tipo">${rotulos[t.tipo] || t.tipo}${infoIcone}</div>
         <div class="quando">${linhasExtra}</div>
       </div>
-      <div class="mono ${classe}">${sinal} ${fmt(t.valor)}${tagEstorno}</div>
+      <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}${tagEstorno}</div>
     </div>`;
   }).join('');
 
@@ -1977,7 +2038,7 @@ $('importar-arquivo').addEventListener('change', (e) => {
 $('btn-confirmar-importacao').addEventListener('click', async () => {
   const erroEl = $('importar-erro');
   erroEl.textContent = '';
-  let criados = 0, comErro = 0, comAvisoJuros = 0;
+  let criados = 0, comErro = 0, comAvisoJuros = 0, diasJurosRetroativos = 0;
 
   const turmasUnicas = [...new Set(linhasImportacao.map(l => l.turma))];
   const idsTurma = {};
@@ -2016,21 +2077,22 @@ $('btn-confirmar-importacao').addEventListener('click', async () => {
     }
 
     // data base dos juros do plano básico (opcional) — corrige a data de
-    // início do pacote básico que é atribuído automaticamente ao aluno
+    // início e, se for no passado, já aplica o rendimento retroativo
     if (linha.data_base_juros && pacoteBasico) {
       const { data: contaDoAluno } = await supabase.from('contas').select('id').eq('aluno_id', novoAluno.id).single();
       if (contaDoAluno) {
-        const { error: errData } = await supabase.from('conta_pacotes')
-          .update({ data_inicio: linha.data_base_juros })
-          .eq('conta_id', contaDoAluno.id)
-          .eq('pacote_id', pacoteBasico.id);
+        const { data: resultadoJuros, error: errData } = await supabase.rpc('fn_definir_data_base_pacote', {
+          p_conta_id: contaDoAluno.id, p_pacote_id: pacoteBasico.id, p_nova_data: linha.data_base_juros
+        });
         if (errData) comAvisoJuros++;
+        else if (resultadoJuros?.dias_aplicados > 0) diasJurosRetroativos += resultadoJuros.dias_aplicados;
       }
     }
   }
 
   let mensagem = `Importação concluída: ${criados} aluno(s) criado(s)`;
   if (comErro) mensagem += `, ${comErro} com erro (duplicado ou inválido)`;
+  if (diasJurosRetroativos) mensagem += `, ${diasJurosRetroativos} dia(s) de juros retroativo aplicados no total`;
   if (comAvisoJuros) mensagem += `, ${comAvisoJuros} sem conseguir ajustar a data base dos juros`;
   toast(mensagem + '.');
 
@@ -2068,7 +2130,6 @@ const rotulosRelatorio = {
   taxa_debito:'Taxa', taxa_bonus:'Bônus', estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)',
   compra_loja:'Compra na loja', estorno_compra:'Estorno de compra', pix_qrcode:'PIX (QR Code)'
 };
-const negativosRelatorio = ['saque','transferencia_enviada','taxa_debito','estorno_debito'];
 
 function corVar(nome){ return getComputedStyle(document.documentElement).getPropertyValue('--' + nome).trim(); }
 
@@ -2102,10 +2163,12 @@ async function gerarRelatorio(){
 
 function renderResumoRelatorio(linhas){
   const somaPorGrupo = (tipos) => linhas.filter(l => tipos.includes(l.tipo)).reduce((s, l) => s + Number(l.valor), 0);
+  const totalCreditos = linhas.reduce((s, l) => calcularSinalClasse(l.tipo, l.valor).sinal === '+' ? s + Math.abs(Number(l.valor)) : s, 0);
+  const totalDebitos  = linhas.reduce((s, l) => calcularSinalClasse(l.tipo, l.valor).sinal === '-' ? s + Math.abs(Number(l.valor)) : s, 0);
   const cartoes = [
-    { titulo: 'Total de créditos', valor: somaPorGrupo(gruposTipo.creditos), cor: 'green', icone: '💰' },
-    { titulo: 'Total de débitos', valor: somaPorGrupo(gruposTipo.debitos), cor: 'red', icone: '🏧' },
-    { titulo: 'Juros pedagógicos pagos', valor: somaPorGrupo(gruposTipo.rendimentos), cor: 'sun-2', icone: '📈' },
+    { titulo: 'Total de créditos', valor: totalCreditos, cor: 'green', icone: '💰' },
+    { titulo: 'Total de débitos', valor: totalDebitos, cor: 'red', icone: '🏧' },
+    { titulo: 'Juros pedagógicos pagos (líquido)', valor: somaPorGrupo(gruposTipo.rendimentos), cor: 'sun-2', icone: '📈' },
     { titulo: 'Taxas e bônus', valor: somaPorGrupo(gruposTipo.taxas), cor: 'coral', icone: '⚠️' },
     { titulo: 'Total em PIX', valor: somaPorGrupo(gruposTipo.pix), cor: 'mint', icone: '💸' },
     { titulo: 'Nº de movimentações', valor: linhas.length, cor: 'violet', icone: '🧾', semMoeda: true }
@@ -2122,15 +2185,14 @@ function renderResumoRelatorio(linhas){
 
 function renderTabelaRelatorio(linhas){
   $('corpo-relatorio').innerHTML = linhas.map(l => {
-    const sinal = negativosRelatorio.includes(l.tipo) ? '-' : '+';
-    const classe = negativosRelatorio.includes(l.tipo) ? 'valor-neg' : 'valor-pos';
+    const { sinal, classe } = calcularSinalClasse(l.tipo, l.valor);
     return `<tr>
       <td class="mono" style="font-size:12px;">${new Date(l.criado_em).toLocaleString('pt-BR')}</td>
       <td>${l.aluno_nome}${l.aluno_numero ? ' (Nº ' + l.aluno_numero + ')' : ''}</td>
       <td>${l.turma_nome}</td>
       <td>${rotulosRelatorio[l.tipo] || l.tipo}</td>
       <td style="font-size:12.5px; color:var(--ink-soft);">${l.descricao || ''}</td>
-      <td class="mono ${classe}" style="text-align:right;">${sinal} ${fmt(l.valor)}</td>
+      <td class="mono ${classe}" style="text-align:right;">${sinal} ${fmt(Math.abs(l.valor))}</td>
     </tr>`;
   }).join('');
 }
@@ -2191,8 +2253,9 @@ function renderGraficoLinha(linhas){
   linhas.forEach(l => {
     const dia = l.criado_em.slice(0,10);
     if (!porDia[dia]) porDia[dia] = { creditos: 0, debitos: 0 };
-    if (gruposTipo.creditos.includes(l.tipo)) porDia[dia].creditos += Number(l.valor);
-    if (gruposTipo.debitos.includes(l.tipo)) porDia[dia].debitos += Number(l.valor);
+    const { sinal } = calcularSinalClasse(l.tipo, l.valor);
+    if (sinal === '+') porDia[dia].creditos += Math.abs(Number(l.valor));
+    else porDia[dia].debitos += Math.abs(Number(l.valor));
   });
   const dias = Object.keys(porDia).sort();
   const rotulos = dias.map(d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }));

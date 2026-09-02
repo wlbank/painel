@@ -127,7 +127,7 @@
 
 <!-- =====================================================================
      CONFIGURAÇÃO — mesma URL e chave usadas no painel do professor.
-     ==================================================================== -->
+     ===================================================================== -->
 <script>
   const CONFIG = {
     SUPABASE_URL: "https://aqwvnpspejwsqqwbzaxq.supabase.co",
@@ -419,9 +419,15 @@ const rotulosTipo = {
   transferencia_enviada:'PIX enviado', transferencia_recebida:'PIX recebido',
   rendimento_automatico:'Juros pedagógico automático', rendimento_manual:'Juros pedagógico manual',
   taxa_debito:'Taxa aplicada', taxa_bonus:'Bônus aplicado',
-  estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)'
+  estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)',
+  compra_loja:'Compra na loja', estorno_compra:'Estorno de compra', pix_qrcode:'PIX (QR Code)'
 };
-const negativos = ['saque','transferencia_enviada','taxa_debito','estorno_debito'];
+const TIPOS_SINAL_PROPRIO = ['rendimento_automatico', 'rendimento_manual'];
+const TIPOS_DEBITO = ['saque','transferencia_enviada','taxa_debito','estorno_debito','compra_loja','pix_qrcode'];
+function calcularSinalClasse(tipo, valor){
+  const negativo = TIPOS_SINAL_PROPRIO.includes(tipo) ? Number(valor) < 0 : TIPOS_DEBITO.includes(tipo);
+  return { sinal: negativo ? '-' : '+', classe: negativo ? 'valor-neg' : 'valor-pos' };
+}
 
 $('form-login').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -457,14 +463,13 @@ function renderDados(data){
 
   const pacotesEl = $('lista-pacotes');
   pacotesEl.innerHTML = data.pacotes_ativos.length
-    ? data.pacotes_ativos.map(p => `<span class="tag-pacote">${p.nome} (+${p.taxa_mensal}%/mês${p.data_fim ? ', até ' + new Date(p.data_fim).toLocaleDateString('pt-BR') : ''})</span>`).join('')
+    ? data.pacotes_ativos.map(p => `<span class="tag-pacote">${p.nome} (+${p.taxa_mensal}%/mês${p.data_fim ? ', até ' + new Date(p.data_fim).toLocaleDateString('pt-BR') : ''})<br><span style="font-size:10.5px; opacity:0.85;">rendendo desde ${new Date(p.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}</span></span>`).join('')
     : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhum pacote ativo no momento.</p>';
 
   const extratoEl = $('lista-extrato');
   extratoEl.innerHTML = data.extrato.length
     ? data.extrato.map(t => {
-        const sinal = negativos.includes(t.tipo) ? '-' : '+';
-        const classe = negativos.includes(t.tipo) ? 'valor-neg' : 'valor-pos';
+        const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
         const quando = new Date(t.criado_em).toLocaleString('pt-BR');
 
         let extra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
@@ -482,7 +487,7 @@ function renderDados(data){
             <div>${rotulosTipo[t.tipo] || t.tipo}${infoIcone}</div>
             <div class="quando">${extra}</div>
           </div>
-          <div class="mono ${classe}">${sinal} ${fmt(t.valor)}</div>
+          <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}</div>
         </div>`;
       }).join('')
     : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhuma movimentação ainda.</p>';
