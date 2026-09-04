@@ -1260,7 +1260,7 @@ async function abrirModalAluno(alunoExistente){
 
       const ehPassado = novaData < new Date().toISOString().slice(0,10);
       const aviso = ehPassado
-        ? `Isso vai lançar o rendimento diário retroativo do Pacote Básico, dia a dia, de ${novaData} até hoje, com base no saldo atual. Só faça isso uma vez — repetir a ação soma os juros em dobro. Confirma?`
+        ? `Isso vai (re)calcular o rendimento diário retroativo do Pacote Básico, dia a dia, de ${novaData} até hoje, com base no saldo atual. Se já havia um cálculo retroativo anterior, ele é desfeito antes — pode repetir quantas vezes precisar sem duplicar. Confirma?`
         : `Confirma alterar a data base do Pacote Básico para ${novaData}?`;
       if (!confirm(aviso)) return;
 
@@ -1271,9 +1271,12 @@ async function abrirModalAluno(alunoExistente){
 
       overlay.remove();
       await carregarAlunos();
-      toast(resultado.dias_aplicados > 0
+      const removeu = resultado.juros_anteriores_removidos && resultado.juros_anteriores_removidos !== 0;
+      let msg = resultado.dias_aplicados > 0
         ? `✅ Data base atualizada — ${resultado.dias_aplicados} dia(s) de juros retroativo aplicados (${fmt(resultado.total_juros)}).`
-        : `✅ Data base atualizada.`);
+        : `✅ Data base atualizada.`;
+      if (removeu) msg += ` (cálculo anterior de ${fmt(resultado.juros_anteriores_removidos)} foi desfeito antes de recalcular)`;
+      toast(msg);
     });
   }
 }
