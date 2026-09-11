@@ -215,6 +215,7 @@
     background: var(--bg-900); border:1px solid rgba(255,201,77,0.3);
     border-radius: var(--radius); box-shadow: var(--shadow);
     width:100%; max-width:440px; padding:26px;
+    max-height:90vh; overflow-y:auto;
   }
   .modal header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
   .modal header h3{ font-family:'Baloo 2',sans-serif; margin:0; font-size:18px; }
@@ -484,9 +485,16 @@
       </table>
 
       <h3 style="font-size:14px;">✨ Novo motivo</h3>
+      <div class="field"><label>Nome do motivo</label><input type="text" id="novo-motivo-nome" placeholder="Ex: Indisciplina em sala"></div>
       <div class="grid-2">
-        <div class="field"><label>Nome do motivo</label><input type="text" id="novo-motivo-nome" placeholder="Ex: Indisciplina em sala"></div>
-        <div class="field"><label>Valor (WL)</label><input type="number" step="0.01" min="0.01" id="novo-motivo-valor" class="mono"></div>
+        <div class="field">
+          <label>Formato</label>
+          <select id="novo-motivo-formato">
+            <option value="valor">Valor fixo (WL)</option>
+            <option value="percentual">Percentual do saldo (%)</option>
+          </select>
+        </div>
+        <div class="field"><label id="novo-motivo-valor-label">Valor (WL)</label><input type="number" step="0.01" min="0.01" id="novo-motivo-valor" class="mono"></div>
       </div>
       <div class="field">
         <label>Tipo</label>
@@ -1003,12 +1011,41 @@ async function carregarTurmas(){
   for (const turma of data) {
     const div = document.createElement('div');
     div.className = 'turma-item' + (turma.id === turmaAtualId ? ' ativa' : '');
-    div.innerHTML = `<span>${turma.nome}</span>`;
-    div.addEventListener('click', () => selecionarTurma(turma.id, turma.nome));
+    div.innerHTML = `
+      <span style="flex:1;">${turma.nome}</span>
+      <button data-excluir-turma="${turma.id}" data-nome-turma="${turma.nome}"
+        title="Excluir turma" style="background:none; border:none; color:var(--red); cursor:pointer; padding:0 2px; font-size:12px; opacity:0.6;">🗑️</button>`;
+    div.style.display = 'flex';
+    div.style.alignItems = 'center';
+    div.querySelector('span').addEventListener('click', () => selecionarTurma(turma.id, turma.nome));
+    div.querySelector('button').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await excluirTurma(turma.id, turma.nome);
+    });
     cont.appendChild(div);
   }
 
   if (!turmaAtualId && data.length) await selecionarTurma(data[0].id, data[0].nome);
+}
+
+async function excluirTurma(id, nome){
+  const confirmado = await confirmarExclusaoComTexto(
+    `Isso vai excluir a turma "${nome}" PERMANENTEMENTE. Só funciona se não houver nenhum aluno cadastrado nela.`
+  );
+  if (!confirmado) return;
+
+  const { error } = await supabase.from('turmas').delete().eq('id', id);
+  if (error) {
+    const msg = error.code === '23503'
+      ? 'Não é possível excluir: ainda há alunos cadastrados nesta turma. Mova ou exclua os alunos primeiro.'
+      : error.message;
+    toast('Erro: ' + msg, true);
+    return;
+  }
+
+  if (turmaAtualId === id) turmaAtualId = null;
+  await carregarTurmas();
+  toast(`🗑️ Turma "${nome}" excluída.`);
 }
 
 $('form-nova-turma').addEventListener('submit', async (e) => {
@@ -1198,6 +1235,10 @@ async function abrirModalAluno(alunoExistente){
         <button class="btn-ghost btn-small" id="aluno-recalcular-juros" style="width:100%;">🔄 Salvar data e recalcular juros</button>
         <div class="erro-modal" id="aluno-juros-resultado"></div>
       ` : ''}
+      ${editando ? `
+        <hr style="border:none; border-top:1px solid rgba(var(--border-rgb),0.15); margin:18px 0;">
+        <button class="btn-danger btn-small" id="aluno-excluir" style="width:100%;">🗑️ Excluir aluno permanentemente</button>
+      ` : ''}
     </div>`;
   document.body.appendChild(overlay);
   $('aluno-fechar').addEventListener('click', () => overlay.remove());
@@ -1279,6 +1320,31 @@ async function abrirModalAluno(alunoExistente){
       toast(msg);
     });
   }
+
+  if (editando) {
+    $('aluno-excluir').addEventListener('click', async () => {
+      const confirmado = await confirmarExclusaoComTexto(
+        `Isso vai excluir "${alunoExistente.nome}" PERMANENTEMENTE — incluindo toda a conta, extrato, pedidos e histórico dele. Não tem como desfazer.`
+      );
+      if (!confirmado) return;
+
+      const { error } = await supabase.from('alunos').delete().eq('id', alunoExistente.id);
+      if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+
+      overlay.remove();
+      await carregarAlunos();
+      toast(`🗑️ ${alunoExistente.nome} excluído permanentemente.`);
+    });
+  }
+}
+
+// Pede para digitar "deletar" antes de confirmar uma exclusão permanente.
+// Resolve true só se o texto digitado bater exatamente (sem diferenciar
+// maiúsculas/minúsculas); false em qualquer outro caso, incluindo cancelar.
+function confirmarExclusaoComTexto(aviso){
+  const digitado = prompt(`⚠️ ${aviso}\n\nDigite "deletar" (sem aspas) para confirmar:`);
+  if (digitado === null) return Promise.resolve(false);
+  return Promise.resolve(digitado.trim().toLowerCase() === 'deletar');
 }
 
 // ---------------------------------------------------------------- MODAIS
@@ -1880,7 +1946,7 @@ function renderTabelaMotivos(){
     <tr>
       <td>${m.nome}</td>
       <td>${m.tipo === 'bonus' ? '✅ Bônus' : '⚠️ Débito'}</td>
-      <td class="mono">${Number(m.valor)}</td>
+      <td class="mono">${m.formato === 'percentual' ? Number(m.valor) + '%' : fmt(Number(m.valor))}</td>
       <td>
         <div class="acoes-linha" style="justify-content:flex-end;">
           <button class="btn-ghost btn-small" data-editar-motivo="${m.id}">Editar</button>
@@ -1902,12 +1968,20 @@ async function editarMotivo(id){
   if (!motivo) return;
   const novoNome = prompt('Nome do motivo:', motivo.nome);
   if (novoNome === null) return;
-  const novoValorTexto = prompt('Valor (WL):', motivo.valor);
+
+  const formatoTexto = prompt('Formato — digite "valor" (WL fixo) ou "percentual" (% do saldo):', motivo.formato || 'valor');
+  if (formatoTexto === null) return;
+  const novoFormato = formatoTexto.trim().toLowerCase() === 'percentual' ? 'percentual' : 'valor';
+
+  const rotuloValor = novoFormato === 'percentual' ? 'Percentual do saldo (%):' : 'Valor (WL):';
+  const novoValorTexto = prompt(rotuloValor, motivo.valor);
   if (novoValorTexto === null) return;
   const novoValor = parseFloat(novoValorTexto);
   if (isNaN(novoValor) || novoValor <= 0) { toast('Valor inválido.', true); return; }
 
-  const { error } = await supabase.from('motivos_taxa').update({ nome: novoNome.trim() || motivo.nome, valor: novoValor }).eq('id', id);
+  const { error } = await supabase.from('motivos_taxa')
+    .update({ nome: novoNome.trim() || motivo.nome, valor: novoValor, formato: novoFormato })
+    .eq('id', id);
   if (error) { toast('Erro: ' + error.message, true); return; }
   await carregarMotivosCache();
   renderTabelaMotivos();
@@ -1926,14 +2000,20 @@ async function excluirMotivo(id){
   toast('Motivo excluído.');
 }
 
+$('novo-motivo-formato').addEventListener('change', (e) => {
+  $('novo-motivo-valor-label').textContent = e.target.value === 'percentual' ? 'Percentual do saldo (%)' : 'Valor (WL)';
+});
+
 $('btn-criar-motivo').addEventListener('click', async () => {
   const nome = $('novo-motivo-nome').value.trim();
   const valor = parseFloat($('novo-motivo-valor').value);
   const tipo = $('novo-motivo-tipo').value;
+  const formato = $('novo-motivo-formato').value;
   if (!nome) { toast('Informe o nome do motivo.', true); return; }
   if (!valor || valor <= 0) { toast('Informe um valor válido.', true); return; }
+  if (formato === 'percentual' && valor > 100) { toast('Percentual não pode passar de 100%.', true); return; }
 
-  const { error } = await supabase.from('motivos_taxa').insert({ nome, valor, tipo });
+  const { error } = await supabase.from('motivos_taxa').insert({ nome, valor, tipo, formato });
   if (error) { toast('Erro: ' + error.message, true); return; }
   $('novo-motivo-nome').value = '';
   $('novo-motivo-valor').value = '';
@@ -1946,7 +2026,10 @@ $('btn-criar-motivo').addEventListener('click', async () => {
 function popularSelectMotivos(){
   const sel = $('taxa-motivo-select');
   sel.innerHTML = motivosCache.length
-    ? motivosCache.map(m => `<option value="${m.id}">${m.tipo === 'bonus' ? '✅' : '⚠️'} ${m.nome} (${m.tipo === 'bonus' ? '+' : '-'}${m.valor} WL)</option>`).join('')
+    ? motivosCache.map(m => {
+        const sufixo = m.formato === 'percentual' ? `${m.valor}% do saldo` : `${m.valor} WL`;
+        return `<option value="${m.id}">${m.tipo === 'bonus' ? '✅' : '⚠️'} ${m.nome} (${m.tipo === 'bonus' ? '+' : '-'}${sufixo})</option>`;
+      }).join('')
     : `<option value="">Nenhum motivo criado</option>`;
 }
 
