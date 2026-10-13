@@ -1,0 +1,23 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'   # a cada 3 dias, 12h UTC
+  workflow_dispatch: {}       # permite rodar manualmente em Actions > Run workflow
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar uma função pública e leve do WL Bank
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          STATUS=$(curl -s -o /tmp/resposta.json -w "%{http_code}" -X POST "${SUPABASE_URL}/rest/v1/rpc/fn_listar_produtos_loja" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" -d '{}')
+          echo "HTTP $STATUS"
+          if [ "$STATUS" -ge 400 ]; then cat /tmp/resposta.json; exit 1; fi
+          
