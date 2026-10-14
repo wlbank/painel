@@ -476,7 +476,10 @@
           <input type="number" step="0.01" min="0.01" id="lote-valor" class="mono">
         </div>
       </div>
-      <div class="field"><label>Descrição (opcional)</label><input type="text" id="lote-descricao" placeholder="Ex: Prêmio pela gincana"></div>
+      <div class="grid-2">
+        <div class="field"><label>Descrição (opcional)</label><input type="text" id="lote-descricao" placeholder="Ex: Prêmio pela gincana"></div>
+        <div class="field"><label>📅 Data do lançamento</label><input type="date" id="lote-data"></div>
+      </div>
       <div id="lote-lista-alunos" style="margin-bottom:14px; max-height:220px; overflow-y:auto; display:grid; gap:6px;"></div>
       <button id="btn-lote-depositar" class="btn-gold btn-small">💰 Depositar para selecionados</button>
       <div class="erro-modal" id="lote-erro"></div>
@@ -528,7 +531,10 @@
           <select id="taxa-turma-select"></select>
         </div>
       </div>
-      <div class="field"><label>Descrição (opcional, substitui o nome do motivo no extrato)</label><input type="text" id="taxa-descricao"></div>
+      <div class="grid-2">
+        <div class="field"><label>Descrição (opcional, substitui o nome do motivo no extrato)</label><input type="text" id="taxa-descricao"></div>
+        <div class="field"><label>📅 Data do lançamento</label><input type="date" id="taxa-data"></div>
+      </div>
       <div id="taxa-lista-alunos" style="margin-bottom:14px; max-height:220px; overflow-y:auto; display:grid; gap:6px;"></div>
       <button id="btn-aplicar-taxa" class="btn-gold btn-small">Aplicar aos selecionados</button>
       <div class="erro-modal" id="taxa-erro"></div>
@@ -542,8 +548,9 @@
         Cadastre vários alunos de uma vez a partir de uma planilha Excel com as colunas
         <strong>Turma, Nº de chamada, Nome do Aluno, RA, Dígito RA, Data de Nascimento,
         Email Microsoft, Email Google, Situação do Aluno, Saldo Inicial, Data Base dos
-        Juros</strong>. Turmas que ainda não existem são criadas automaticamente.
-        Saldo Inicial e Data Base dos Juros são opcionais — deixe em branco (ou 0) se o
+        Juros, Data do Saldo Inicial</strong>. Turmas que ainda não existem são criadas automaticamente.
+        <strong>Data do Saldo Inicial</strong> também entra na planilha (opcional; se vazia, usa a Data Base quando for passada, senão hoje).
+        Saldo Inicial e as datas são opcionais — deixe em branco (ou 0) se o
         aluno começa zerado com a data de hoje.
       </p>
       <button id="btn-baixar-modelo" class="btn-ghost btn-small" style="margin-bottom:14px;">⬇️ Baixar planilha modelo</button>
@@ -923,6 +930,8 @@ function mostrarDicaDoDiaProfessor(){
 }
 mostrarDicaDoDiaProfessor();
 const $ = (id) => document.getElementById(id);
+function preencherDatasHoje(){ ['lote-data','taxa-data'].forEach(i => { const e = $(i); if (e) { e.value = hojeISO(); e.max = hojeISO(); } }); }
+function hojeISO(){ const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 
 let turmaAtualId = null;
 let alunosCache = [];
@@ -1406,6 +1415,7 @@ async function abrirModal(tipo, aluno){
     corpo = `
       <div class="field"><label>Valor</label><input type="number" step="0.01" min="0.01" id="modal-valor" class="mono"></div>
       <div class="field"><label>Descrição (opcional)</label><input type="text" id="modal-descricao"></div>
+      <div class="field"><label>📅 Data do lançamento</label><input type="date" id="modal-data" value="${hojeISO()}" max="${hojeISO()}"></div>
       <button class="btn-gold" id="modal-confirmar" style="width:100%;">Confirmar ${titulos[tipo].toLowerCase()}</button>
       <div class="erro-modal" id="modal-erro"></div>`;
   } else if (tipo === 'pix') {
@@ -1434,6 +1444,7 @@ async function abrirModal(tipo, aluno){
       </div>
       <div class="field"><label>Valor</label><input type="number" step="0.01" min="0.01" id="modal-valor" class="mono"></div>
       <div class="field"><label>Descrição (opcional)</label><input type="text" id="modal-descricao"></div>
+      <div class="field"><label>📅 Data do lançamento</label><input type="date" id="modal-data" value="${hojeISO()}" max="${hojeISO()}"></div>
       <button class="btn-gold" id="modal-confirmar" style="width:100%;">💸 Confirmar PIX</button>
       <div class="erro-modal" id="modal-erro"></div>`;
   } else if (tipo === 'extrato') {
@@ -1518,15 +1529,16 @@ async function abrirModal(tipo, aluno){
 
     const valor = parseFloat($('modal-valor').value);
     const descricao = $('modal-descricao').value.trim() || null;
+    const dataLanc = $('modal-data')?.value || null;
     if (!valor || valor <= 0) { erroEl.textContent = 'Informe um valor válido.'; return; }
 
     let resp;
     if (tipo === 'depositar') {
       if (!confirm(`Confirma depositar ${fmt(valor)} para ${aluno.nome}?`)) return;
-      resp = await supabase.rpc('fn_depositar', { p_aluno_id: aluno.id, p_valor: valor, p_descricao: descricao });
+      resp = await supabase.rpc('fn_depositar', { p_aluno_id: aluno.id, p_valor: valor, p_descricao: descricao, p_data: dataLanc });
     } else if (tipo === 'sacar') {
       if (!confirm(`Confirma sacar ${fmt(valor)} da conta de ${aluno.nome}?`)) return;
-      resp = await supabase.rpc('fn_sacar', { p_aluno_id: aluno.id, p_valor: valor, p_descricao: descricao });
+      resp = await supabase.rpc('fn_sacar', { p_aluno_id: aluno.id, p_valor: valor, p_descricao: descricao, p_data: dataLanc });
     } else if (tipo === 'pix') {
       let destinoId, destinoNome = 'destinatário';
       if ($('pix-modo').value === 'chave') {
@@ -1548,7 +1560,7 @@ async function abrirModal(tipo, aluno){
         destinoNome = selEl.options[selEl.selectedIndex]?.textContent || 'destinatário';
       }
       if (!confirm(`Confirma enviar ${fmt(valor)} de ${aluno.nome} para ${destinoNome}?`)) return;
-      resp = await supabase.rpc('fn_transferir', { p_aluno_origem_id: aluno.id, p_aluno_destino_id: destinoId, p_valor: valor, p_descricao: descricao });
+      resp = await supabase.rpc('fn_transferir', { p_aluno_origem_id: aluno.id, p_aluno_destino_id: destinoId, p_valor: valor, p_descricao: descricao, p_data: dataLanc });
     }
 
     if (resp.error) { erroEl.textContent = resp.error.message.replace(/^.*: /, ''); return; }
@@ -1652,6 +1664,7 @@ async function carregarExtrato(alunoId){
 
 // ---------------------------------------------------------------- TELA DE CONFIGURAÇÕES
 async function abrirTelaConfig(){
+  preencherDatasHoje();
   await carregarConfigGeral();
   await carregarPacotesCache();
   renderTabelaPacotes();
@@ -1953,6 +1966,7 @@ $('btn-lote-depositar').addEventListener('click', async () => {
   erroEl.textContent = '';
   const valor = parseFloat($('lote-valor').value);
   const descricao = $('lote-descricao').value.trim() || null;
+  const dataLote = $('lote-data').value || null;
   const alunoIds = Array.from(document.querySelectorAll('.lote-lista-alunos-check:checked')).map(cb => cb.value);
 
   if (!valor || valor <= 0) { erroEl.textContent = 'Informe um valor válido.'; return; }
@@ -1960,11 +1974,12 @@ $('btn-lote-depositar').addEventListener('click', async () => {
 
   if (!confirm(`Confirma depositar ${fmt(valor)} para ${alunoIds.length} aluno(s)?`)) return;
 
-  const { error } = await supabase.rpc('fn_depositar_lote', { p_aluno_ids: alunoIds, p_valor: valor, p_descricao: descricao });
+  const { error } = await supabase.rpc('fn_depositar_lote', { p_aluno_ids: alunoIds, p_valor: valor, p_descricao: descricao, p_data: dataLote });
   if (error) { erroEl.textContent = error.message.replace(/^.*: /, ''); return; }
   toast(`✅ ${fmt(valor)} depositado para ${alunoIds.length} aluno(s).`);
   $('lote-valor').value = '';
   $('lote-descricao').value = '';
+  preencherDatasHoje();
 });
 
 // ---------------------------------------------------------------- TAXAS E CONSEQUÊNCIAS
@@ -2072,6 +2087,7 @@ $('btn-aplicar-taxa').addEventListener('click', async () => {
   erroEl.textContent = '';
   const motivoId = $('taxa-motivo-select').value;
   const descricao = $('taxa-descricao').value.trim() || null;
+  const dataTaxa = $('taxa-data').value || null;
   const alunoIds = Array.from(document.querySelectorAll('.taxa-lista-alunos-check:checked')).map(cb => cb.value);
 
   if (!motivoId) { erroEl.textContent = 'Crie um motivo primeiro.'; return; }
@@ -2080,9 +2096,10 @@ $('btn-aplicar-taxa').addEventListener('click', async () => {
   const nomeMotivo = $('taxa-motivo-select').selectedOptions[0]?.textContent || 'este motivo';
   if (!confirm(`Confirma aplicar "${nomeMotivo}" a ${alunoIds.length} aluno(s)?`)) return;
 
-  const { error } = await supabase.rpc('fn_aplicar_taxa', { p_motivo_id: motivoId, p_aluno_ids: alunoIds, p_descricao: descricao });
+  const { error } = await supabase.rpc('fn_aplicar_taxa', { p_motivo_id: motivoId, p_aluno_ids: alunoIds, p_descricao: descricao, p_data: dataTaxa });
   if (error) { erroEl.textContent = error.message.replace(/^.*: /, ''); return; }
   toast(`✅ Taxa aplicada a ${alunoIds.length} aluno(s).`);
+  preencherDatasHoje();
 });
 
 // ---------------------------------------------------------------- IMPORTAR PLANILHA
@@ -2090,9 +2107,9 @@ let linhasImportacao = [];
 
 $('btn-baixar-modelo').addEventListener('click', () => {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Turma', 'Nº de chamada', 'Nome do Aluno', 'RA', 'Dígito do RA', 'Data de Nascimento', 'Email Microsoft', 'Email Google', 'Situação', 'Saldo Inicial', 'Data Base dos Juros'],
-    ['6ºA', 1, 'Exemplo de Aluno', '2026001', '8', '2013-05-20', 'exemplo.aluno@escola.onmicrosoft.com', 'exemplo.aluno@escola.org', 'Ativo', 50, '2026-02-01'],
-    ['6ºA', 2, 'Outro Aluno Exemplo', '2026002', '3', '2013-08-11', 'outro.aluno@escola.onmicrosoft.com', 'outro.aluno@escola.org', 'Ativo', 0, '']
+    ['Turma', 'Nº de chamada', 'Nome do Aluno', 'RA', 'Dígito do RA', 'Data de Nascimento', 'Email Microsoft', 'Email Google', 'Situação', 'Saldo Inicial', 'Data Base dos Juros', 'Data do Saldo Inicial'],
+    ['6ºA', 1, 'Exemplo de Aluno', '2026001', '8', '2013-05-20', 'exemplo.aluno@escola.onmicrosoft.com', 'exemplo.aluno@escola.org', 'Ativo', 50, '2026-02-01', '2026-02-01'],
+    ['6ºA', 2, 'Outro Aluno Exemplo', '2026002', '3', '2013-08-11', 'outro.aluno@escola.onmicrosoft.com', 'outro.aluno@escola.org', 'Ativo', 0, '', '']
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Alunos');
@@ -2122,6 +2139,7 @@ $('importar-arquivo').addEventListener('change', (e) => {
         const situacaoTexto = String(l['Situação'] ?? '').trim().toLowerCase();
         const saldoTexto = String(l['Saldo Inicial'] ?? '').trim().replace(',', '.');
         const dataBaseTexto = String(l['Data Base dos Juros'] ?? '').trim();
+        const dataSaldoTexto = String(l['Data do Saldo Inicial'] ?? '').trim();
         return {
           turma: String(l['Turma'] ?? '').trim(),
           numero: l['Nº de chamada'] !== '' && l['Nº de chamada'] != null ? parseInt(l['Nº de chamada'], 10) : null,
@@ -2133,7 +2151,8 @@ $('importar-arquivo').addEventListener('change', (e) => {
           email_google: String(l['Email Google'] ?? '').trim() || null,
           situacao: mapaSituacaoImportacao[situacaoTexto] || 'ativo',
           saldo_inicial: saldoTexto && !isNaN(parseFloat(saldoTexto)) ? parseFloat(saldoTexto) : 0,
-          data_base_juros: dataBaseTexto || null
+          data_base_juros: dataBaseTexto || null,
+          data_saldo_inicial: dataSaldoTexto || null
         };
       }).filter(l => l.turma && l.nome);
 
@@ -2192,7 +2211,8 @@ $('btn-confirmar-importacao').addEventListener('click', async () => {
     // saldo inicial (opcional) — vira um depósito auditável no extrato
     if (linha.saldo_inicial > 0) {
       await supabase.rpc('fn_depositar', {
-        p_aluno_id: novoAluno.id, p_valor: linha.saldo_inicial, p_descricao: 'Saldo inicial (importação)'
+        p_aluno_id: novoAluno.id, p_valor: linha.saldo_inicial, p_descricao: 'Saldo inicial (importação)',
+        p_data: linha.data_saldo_inicial || (linha.data_base_juros && linha.data_base_juros < hojeISO() ? linha.data_base_juros : null)
       });
     }
 
