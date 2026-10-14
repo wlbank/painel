@@ -957,6 +957,12 @@ function mostrarDicaDoDiaProfessor(){
 mostrarDicaDoDiaProfessor();
 const $ = (id) => document.getElementById(id);
 function preencherDatasHoje(){ ['lote-data','taxa-data'].forEach(i => { const e = $(i); if (e) { e.value = hojeISO(); e.max = hojeISO(); } }); }
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'btn-senha-padrao') {
+    $('modal-senha-valor').value = 'Wl@12345';
+    $('modal-senha-confirma').value = 'Wl@12345';
+  }
+});
 function hojeISO(){ const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 
 let turmaAtualId = null;
@@ -1421,6 +1427,7 @@ async function abrirModal(tipo, aluno){
       </p>
       <div class="field"><label>Nova senha</label><input type="password" id="modal-senha-valor" minlength="4"></div>
       <div class="field"><label>Confirmar senha</label><input type="password" id="modal-senha-confirma" minlength="4"></div>
+      <button type="button" id="btn-senha-padrao" class="btn-ghost btn-small" style="margin-bottom:12px;">↺ Usar a senha padrão (Wl@12345)</button>
       <button class="btn-gold" id="modal-confirmar" style="width:100%;" ${aluno.ra ? '' : 'disabled'}>Salvar senha</button>
       <div class="erro-modal" id="modal-erro"></div>`;
   } else if (tipo === 'pacote') {

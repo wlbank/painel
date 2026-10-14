@@ -168,7 +168,7 @@
     <div class="login-card">
       <div class="seal">WL</div>
       <h1 class="brand">Minha conta 💰</h1>
-      <p class="sub">Digite seu RA e sua senha para consultar seu extrato.</p>
+      <p class="sub">Digite seu RA, o dígito e sua senha para consultar seu extrato.</p>
       <div style="background:rgba(45,212,191,0.1); border:1px solid rgba(45,212,191,0.3); border-radius:10px; padding:12px 14px; margin-bottom:20px; font-size:12.5px; line-height:1.5;">
         🎓 O WL Bank é uma moeda simbólica da sua escola — um jeito divertido
         de aprender a cuidar do dinheiro, ganhar juros e evoluir. Continue
@@ -176,8 +176,12 @@
       </div>
       <form id="form-login">
         <div class="field">
-          <label>RA</label>
-          <input type="text" id="login-ra" required autocomplete="username">
+          <label>RA <span style="font-weight:400; opacity:.7;">(não precisa dos zeros do início)</span></label>
+          <input type="text" id="login-ra" required autocomplete="username" inputmode="numeric">
+        </div>
+        <div class="field">
+          <label>Dígito do RA</label>
+          <input type="text" id="login-digito" maxlength="3" autocomplete="off" placeholder="Ex: 7 ou X">
         </div>
         <div class="field">
           <label>Senha</label>
@@ -283,22 +287,26 @@ $('form-login').addEventListener('submit', async (e) => {
   const erroEl = $('erro-login');
   erroEl.textContent = '';
   const ra = $('login-ra').value.trim();
+  const digito = $('login-digito').value.trim();
   const senha = $('login-senha').value;
 
-  const { data, error } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha });
+  const { data, error } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha, p_digito: digito || null });
   if (error) { erroEl.textContent = 'RA ou senha inválidos.'; return; }
 
   sessionStorage.setItem('bancowl_ra', ra);
   sessionStorage.setItem('bancowl_senha', senha);
+  sessionStorage.setItem('bancowl_digito', digito);
   renderDados(data);
 });
 
 $('btn-sair').addEventListener('click', () => {
   sessionStorage.removeItem('bancowl_ra');
   sessionStorage.removeItem('bancowl_senha');
+  sessionStorage.removeItem('bancowl_digito');
   $('tela-conta').classList.add('hidden');
   $('tela-login').classList.remove('hidden');
   $('login-ra').value = '';
+  $('login-digito').value = '';
   $('login-senha').value = '';
 });
 
@@ -384,12 +392,14 @@ function toast(msg, erro){
 (async () => {
   const ra = sessionStorage.getItem('bancowl_ra');
   const senha = sessionStorage.getItem('bancowl_senha');
+  const digito = sessionStorage.getItem('bancowl_digito') || '';
   if (!ra || !senha) return;
 
-  const { data, error } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha });
+  const { data, error } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha, p_digito: digito || null });
   if (error) {
     sessionStorage.removeItem('bancowl_ra');
     sessionStorage.removeItem('bancowl_senha');
+    sessionStorage.removeItem('bancowl_digito');
     return;
   }
   renderDados(data);
