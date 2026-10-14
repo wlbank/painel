@@ -594,6 +594,21 @@
         </div>
         <button id="btn-atribuir-cargo" class="btn-gold btn-small">Atribuir cargo</button>
         <div class="erro-modal" id="usuarios-erro"></div>
+
+        <h3 style="font-size:14px; margin-top:26px;">📅 Alterar data de depósitos em lote</h3>
+        <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 12px;">
+          Muda a data de todos os depósitos feitos em um dia (ex: o saldo inicial lançado na importação) e
+          recalcula saldo e juros de cada aluno na nova ordem de datas. Faça a pré-visualização antes.
+        </p>
+        <div class="grid-2">
+          <div class="field"><label>Depósitos feitos no dia</label><input type="date" id="lote-data-atual"></div>
+          <div class="field"><label>Nova data</label><input type="date" id="lote-data-nova"></div>
+        </div>
+        <div class="field"><label>Só os que contêm este texto na descrição (opcional)</label><input type="text" id="lote-data-texto" placeholder="Ex: Saldo inicial"></div>
+        <button id="btn-lote-data-previa" class="btn-ghost btn-small">🔍 Pré-visualizar</button>
+        <button id="btn-lote-data-aplicar" class="btn-gold btn-small" style="margin-left:8px;">Aplicar nova data</button>
+        <div id="lote-data-resultado" style="font-size:13px; margin-top:10px;"></div>
+        <div class="erro-modal" id="lote-data-erro"></div>
       </div>
     </div>
     </div>
@@ -1724,6 +1739,34 @@ document.querySelectorAll('.btn-aba-cfg').forEach(btn => {
       $('cfg-aba-' + aba).classList.toggle('hidden', btn.dataset.abaCfg !== aba);
     });
   });
+});
+
+// ---------------------------------------------------------------- DATA EM LOTE (superadmin)
+function lerCamposDataLote(){
+  const atual = $('lote-data-atual').value, nova = $('lote-data-nova').value, texto = $('lote-data-texto').value.trim() || null;
+  const erroEl = $('lote-data-erro'); erroEl.textContent = '';
+  if (!atual || !nova) { erroEl.textContent = 'Informe as duas datas.'; return null; }
+  if (nova > hojeISO()) { erroEl.textContent = 'A nova data não pode ser no futuro.'; return null; }
+  return { atual, nova, texto };
+}
+$('btn-lote-data-previa').addEventListener('click', async () => {
+  const c = lerCamposDataLote(); if (!c) return;
+  const { data, error } = await supabase.rpc('fn_previa_alterar_data_lote', { p_data_atual: c.atual, p_descricao: c.texto });
+  if (error) { $('lote-data-erro').textContent = error.message.replace(/^.*: /, ''); return; }
+  $('lote-data-resultado').innerHTML = `Encontrados <strong>${data.depositos}</strong> depósito(s) em <strong>${data.contas}</strong> conta(s), somando <strong>${fmt(data.total)}</strong>.`;
+});
+$('btn-lote-data-aplicar').addEventListener('click', async () => {
+  const c = lerCamposDataLote(); if (!c) return;
+  const { data: previa, error: errPrevia } = await supabase.rpc('fn_previa_alterar_data_lote', { p_data_atual: c.atual, p_descricao: c.texto });
+  if (errPrevia) { $('lote-data-erro').textContent = errPrevia.message.replace(/^.*: /, ''); return; }
+  if (!previa.depositos) { $('lote-data-erro').textContent = 'Nenhum depósito encontrado nesse dia (com esse texto).'; return; }
+  const br = (iso) => iso.split('-').reverse().join('/');
+  if (!confirm(`Mudar a data de ${previa.depositos} depósito(s) (${previa.contas} contas, ${fmt(previa.total)}) de ${br(c.atual)} para ${br(c.nova)}?\n\nO saldo e os juros de cada conta serão recalculados.`)) return;
+  const { data, error } = await supabase.rpc('fn_alterar_data_lote', { p_data_atual: c.atual, p_nova_data: c.nova, p_descricao: c.texto });
+  if (error) { $('lote-data-erro').textContent = error.message.replace(/^.*: /, ''); return; }
+  $('lote-data-resultado').textContent = '';
+  toast(`✅ Data alterada e ${data.contas} conta(s) recalculada(s).`);
+  await carregarAlunos();
 });
 
 // ---------------------------------------------------------------- USUÁRIOS E CARGOS (superadmin)
