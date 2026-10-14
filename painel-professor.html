@@ -1593,6 +1593,8 @@ function agruparExtratoConsecutivo(linhas){
   return grupos;
 }
 
+function ehSuperadminAtual(){ return cargoUsuarioAtual === 'superadmin'; }
+
 function construirLinhaExtrato(t, dentroDeGrupo){
   const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
   const quando = new Date(t.criado_em).toLocaleString('pt-BR');
@@ -1610,8 +1612,10 @@ function construirLinhaExtrato(t, dentroDeGrupo){
     ? `<span style="font-size:10.5px; color:var(--ink-soft); margin-left:6px;">(estornada)</span>`
     : podeEstornar
       ? `<button class="btn-estornar-tx" data-id="${t.id}" style="background:none; border:none; color:var(--coral); cursor:pointer; font-size:11px; margin-left:8px; text-decoration:underline;">Estornar</button>` : '';
+  const botaoData = (ehSuperadminAtual() && !(t.tipo === 'rendimento_automatico' && t.pacote_nome))
+    ? `<button class="btn-data-tx" data-id="${t.id}" data-data="${t.criado_em}" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0 0 0 6px;" title="Alterar a data deste lançamento (superadmin)">📅</button>` : '';
   return `<div class="recibo-linha"${dentroDeGrupo ? ' style="padding-left:22px;"' : ''}>
-    <div><div class="tipo">${ROTULOS_EXTRATO[t.tipo] || t.tipo}${infoIcone}</div><div class="quando">${linhasExtra}</div></div>
+    <div><div class="tipo">${ROTULOS_EXTRATO[t.tipo] || t.tipo}${infoIcone}${botaoData}</div><div class="quando">${linhasExtra}</div></div>
     <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}${tagEstorno}</div>
   </div>`;
 }
@@ -1647,6 +1651,25 @@ async function carregarExtrato(alunoId){
 
   cont.querySelectorAll('.info-pacote').forEach(btn => btn.addEventListener('click', (e) => {
     e.stopPropagation(); alert(`📈 ${btn.dataset.nome}\n\n${btn.dataset.desc}`);
+  }));
+
+  cont.querySelectorAll('.btn-data-tx').forEach(btn => btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const d = new Date(btn.dataset.data);
+    const atual = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const resp = prompt('Nova data do lançamento (AAAA-MM-DD):\n\nO saldo e os juros diários seguintes serão recalculados na nova ordem.', atual);
+    if (resp === null) return;
+    const txt = resp.trim();
+    const br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const iso = br ? `${br[3]}-${br[2]}-${br[1]}` : txt;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || isNaN(new Date(iso + 'T12:00:00'))) { toast('Data inválida. Use AAAA-MM-DD.', true); return; }
+    if (iso > hojeISO()) { toast('A data não pode ser no futuro.', true); return; }
+    if (!confirm(`Alterar a data deste lançamento para ${iso.split('-').reverse().join('/')}? O saldo e os juros posteriores serão recalculados.`)) return;
+    const { error } = await supabase.rpc('fn_alterar_data_transacao', { p_transacao_id: btn.dataset.id, p_nova_data: iso });
+    if (error) { toast('Erro: ' + error.message.replace(/^.*: /, ''), true); return; }
+    await carregarExtrato(alunoId);
+    await carregarAlunos();
+    toast('✅ Data alterada e saldo/juros recalculados.');
   }));
 
   cont.querySelectorAll('.btn-estornar-tx').forEach(btn => btn.addEventListener('click', async (e) => {
@@ -2281,20 +2304,28 @@ async function gerarRelatorio(){
   const dataInicio = $('rel-data-inicio').value;
   const dataFim = $('rel-data-fim').value;
 
-  let query = supabase.from('vw_extrato').select('*')
-    .gte('criado_em', dataInicio + 'T00:00:00')
-    .lte('criado_em', dataFim + 'T23:59:59')
-    .order('criado_em', { ascending: false })
-    .range(0, 9999);
+  const nomeTurmaFiltro = escopo !== 'todas' ? turmasCache.find(t => t.id === escopo)?.nome : null;
+  if (escopo !== 'todas' && !nomeTurmaFiltro) { toast('Turma não encontrada — recarregue a página.', true); return; }
 
-  if (escopo !== 'todas') query = query.eq('turma_nome', turmasCache.find(t => t.id === escopo)?.nome);
-  if (tipoFiltro !== 'todos' && gruposTipo[tipoFiltro]) query = query.in('tipo', gruposTipo[tipoFiltro]);
-
-  const { data, error } = await query;
-  if (error) { toast('Erro ao gerar relatório: ' + error.message, true); return; }
-
+  // O Supabase entrega no máximo 1000 linhas por chamada: busca em páginas até acabar.
+  const TAM_PAGINA = 1000, LIMITE = 20000;
+  let data = [];
+  for (let ini = 0; ini < LIMITE; ini += TAM_PAGINA) {
+    let query = supabase.from('vw_extrato').select('*')
+      .gte('criado_em', dataInicio + 'T00:00:00')
+      .lte('criado_em', dataFim + 'T23:59:59')
+      .order('criado_em', { ascending: false })
+      .order('id', { ascending: false })
+      .range(ini, ini + TAM_PAGINA - 1);
+    if (nomeTurmaFiltro) query = query.eq('turma_nome', nomeTurmaFiltro);
+    if (tipoFiltro !== 'todos' && gruposTipo[tipoFiltro]) query = query.in('tipo', gruposTipo[tipoFiltro]);
+    const { data: pagina, error } = await query;
+    if (error) { toast('Erro ao gerar relatório: ' + error.message, true); return; }
+    data = data.concat(pagina || []);
+    if (!pagina || pagina.length < TAM_PAGINA) break;
+  }
   ultimoRelatorio = data || [];
-  if (ultimoRelatorio.length >= 10000) toast('⚠️ Relatório limitado a 10.000 linhas — reduza o período.', true);
+  if (ultimoRelatorio.length >= 20000) toast('⚠️ Relatório limitado a 20.000 linhas — reduza o período.', true);
   renderResumoRelatorio(ultimoRelatorio);
   renderTabelaRelatorio(ultimoRelatorio);
   renderGraficoPizza(ultimoRelatorio);
