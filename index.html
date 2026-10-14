@@ -121,6 +121,18 @@
   }
   .toast.erro{ border-color: var(--red); }
   .rodape-usuario .info{ font-size:13px; color:var(--ink-soft); }
+
+  /* ---- Visual jovem e alegre ---- */
+  @keyframes pop-in{ from{ opacity:0; transform:translateY(10px) scale(.97);} to{ opacity:1; transform:none;} }
+  @keyframes flutuar{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+  .cartao, .cartao-saldo{ animation:pop-in .45s ease both; }
+  .cartao{ transition:transform .2s, box-shadow .2s; }
+  .cartao:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(124,58,237,.15); }
+  button{ transition:transform .15s; }
+  button:hover{ transform:scale(1.04); }
+  .emoji-flutua{ display:inline-block; animation:flutuar 2.6s ease-in-out infinite; }
+  .recibo-linha[data-grupo-toggle]:hover{ filter:brightness(1.05); }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
@@ -190,7 +202,7 @@
     </div>
 
     <div class="cartao-saldo">
-      <div class="rotulo">Saldo atual</div>
+      <div class="rotulo"><span class="emoji-flutua">🐷</span> Meu saldo</div>
       <div class="valor mono" id="valor-saldo">R$ 0,00</div>
       <div class="taxa" id="valor-taxa"></div>
     </div>
@@ -200,186 +212,23 @@
     </div>
 
     <div class="cartao">
-      <h3>🏅 Planos de juros pedagógicos ativos</h3>
+      <h3>🚀 Planos de juros pedagógicos ativos</h3>
       <div id="lista-pacotes">—</div>
     </div>
 
     <div class="cartao">
-      <h3>🔑 Minha chave PIX</h3>
-      <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
-        Mostre este QR Code para o professor escanear na hora de um PIX — em vez de digitar seu RA.
-      </p>
-      <canvas id="minha-chave-canvas" style="margin:0 auto; display:block;"></canvas>
-      <div class="mono" style="text-align:center; margin-top:10px; font-size:13px;" id="minha-chave-ra"></div>
-    </div>
-
-    <div class="cartao">
-      <h3>💳 Pagar com PIX (QR Code)</h3>
-      <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
-        Se o caixa da escola te mostrar um QR Code de cobrança, escaneie aqui — ou digite o código manualmente.
-      </p>
-      <button id="btn-pagar-escanear" class="btn-ghost" style="width:100%; margin-bottom:10px;">📷 Escanear cobrança</button>
-      <div id="pagar-qrcode-area"></div>
-      <div class="linha-form" style="margin-bottom:10px;">
-        <div class="field" style="margin-bottom:0;"><input type="text" id="pagar-codigo-manual" placeholder="Ou cole/digite o código aqui"></div>
-        <button id="btn-pagar-consultar" class="btn-ghost">Consultar</button>
-      </div>
-      <div id="pagar-cobranca-detalhe"></div>
-    </div>
-
-    <div class="cartao hidden" id="cartao-loja">
-      <h3>🛍️ Lojinha WL Bank</h3>
-      <p style="font-size:12.5px; color:var(--ink-soft); margin:-4px 0 14px;">
-        Compre com seu WL e retire na escola — o professor confirma a entrega pessoalmente.
-      </p>
-      <div id="lista-produtos-loja">Carregando...</div>
-      <div id="loja-carrinho" style="margin:14px 0;"></div>
-      <div style="font-weight:700; margin-bottom:12px;">Total: <span class="mono" id="loja-total">WL 0,00</span></div>
-      <button id="btn-loja-comprar" class="btn-gold" style="width:100%;">✅ Confirmar compra</button>
-      <div class="erro-modal" id="loja-erro"></div>
-    </div>
-
-    <div class="cartao hidden" id="cartao-meus-pedidos">
-      <h3>📦 Meus pedidos</h3>
-      <div id="lista-meus-pedidos">—</div>
-    </div>
-
-
-    <div class="cartao">
-      <h3>Extrato de movimentações</h3>
+      <h3>📜 Extrato de movimentações</h3>
       <div id="lista-extrato">—</div>
     </div>
   </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 // ---------------------------------------------------------------- QR CODE (gerar / ler)
-function gerarQRCode(canvasEl, texto){
-  if (typeof QRCode === 'undefined') {
-    canvasEl.replaceWith(Object.assign(document.createElement('p'), {
-      textContent: 'Não foi possível carregar o gerador de QR Code. Verifique sua internet e recarregue a página.',
-      style: 'color:var(--red); font-size:13px;'
-    }));
-    return;
-  }
-  QRCode.toCanvas(canvasEl, texto, { width: 200, margin: 1 }, (err) => { if (err) console.error(err); });
-}
-
-// OBS: leitura em baixa resolução e com intervalo entre tentativas de
-// propósito — ler em resolução nativa a cada frame trava o navegador em
-// celulares e Chromebooks mais simples.
-let _qrScanAtivo = null;
-
-function escanearQRCode(containerEl){
-  if (_qrScanAtivo) { _qrScanAtivo(); _qrScanAtivo = null; }
-  return new Promise((resolve) => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      containerEl.innerHTML = '<p style="color:var(--red); font-size:13px;">Este navegador não permite acesso à câmera. Digite o código manualmente.</p>';
-      resolve(null);
-      return;
-    }
-    if (typeof jsQR === 'undefined') {
-      containerEl.innerHTML = '<p style="color:var(--red); font-size:13px;">Não foi possível carregar o leitor de QR Code. Verifique sua internet e recarregue a página.</p>';
-      resolve(null);
-      return;
-    }
-
-    const LARGURA_DECODE = 360;
-    const video = document.createElement('video');
-    video.setAttribute('playsinline', true);
-    video.muted = true;
-    video.style.width = '100%';
-    video.style.borderRadius = '10px';
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const btnCancelar = document.createElement('button');
-    btnCancelar.textContent = 'Cancelar leitura';
-    btnCancelar.className = 'btn-ghost';
-    btnCancelar.style.marginTop = '10px';
-    btnCancelar.style.width = '100%';
-
-    containerEl.innerHTML = '';
-    containerEl.appendChild(video);
-    containerEl.appendChild(btnCancelar);
-
-    let stream, timeoutId, encerrado = false;
-
-    function encerrar(resultado){
-      if (encerrado) return;
-      encerrado = true;
-      if (timeoutId) clearTimeout(timeoutId);
-      if (stream) stream.getTracks().forEach(t => t.stop());
-      containerEl.innerHTML = '';
-      if (_qrScanAtivo === pararEsteEscaneamento) _qrScanAtivo = null;
-      resolve(resultado);
-    }
-    function pararEsteEscaneamento(){ encerrar(null); }
-    _qrScanAtivo = pararEsteEscaneamento;
-
-    btnCancelar.addEventListener('click', () => encerrar(null));
-
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 480 }, height: { ideal: 360 } }
-    })
-      .then((s) => {
-        stream = s;
-        video.srcObject = s;
-        video.play();
-
-        function tick(){
-          if (encerrado) return;
-          if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
-            try {
-              const escala = LARGURA_DECODE / video.videoWidth;
-              canvas.width = LARGURA_DECODE;
-              canvas.height = Math.max(1, Math.round(video.videoHeight * escala));
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const imagem = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const codigo = jsQR(imagem.data, imagem.width, imagem.height, { inversionAttempts: 'dontInvert' });
-              if (codigo) { encerrar(codigo.data); return; }
-            } catch (erroDecode) { /* frame ainda não pronto */ }
-          }
-          timeoutId = setTimeout(tick, 200);
-        }
-        tick();
-      })
-      .catch(() => {
-        containerEl.innerHTML = '<p style="color:var(--red); font-size:13px;">Não foi possível acessar a câmera. Digite o código manualmente.</p>';
-        encerrado = true;
-        resolve(null);
-      });
-  });
-}
-
-// ---------------------------------------------------------------- TEMA (claro/escuro/sistema)
-(function(){
-  const select = document.getElementById('seletor-tema');
-  const salvo = localStorage.getItem('wlbank-tema') || 'sistema';
-  select.value = salvo;
-
-  function aplicarTema(preferencia){
-    const sistemaEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const escuro = preferencia === 'escuro' || (preferencia === 'sistema' && sistemaEscuro);
-    document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
-  }
-
-  aplicarTema(salvo);
-
-  select.addEventListener('change', () => {
-    localStorage.setItem('wlbank-tema', select.value);
-    aplicarTema(select.value);
-  });
-
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if ((localStorage.getItem('wlbank-tema') || 'sistema') === 'sistema') aplicarTema('sistema');
-  });
-})();
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => 'WL ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -415,12 +264,12 @@ function mostrarDicaDoDia(){
 mostrarDicaDoDia();
 
 const rotulosTipo = {
-  deposito:'Depósito', saque:'Saque',
-  transferencia_enviada:'PIX enviado', transferencia_recebida:'PIX recebido',
-  rendimento_automatico:'Juros pedagógico automático', rendimento_manual:'Juros pedagógico manual',
-  taxa_debito:'Taxa aplicada', taxa_bonus:'Bônus aplicado',
-  estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)',
-  compra_loja:'Compra na loja', estorno_compra:'Estorno de compra', pix_qrcode:'PIX (QR Code)'
+  deposito:'💰 Depósito', saque:'🏧 Saque',
+  transferencia_enviada:'💸 PIX enviado', transferencia_recebida:'🎁 PIX recebido',
+  rendimento_automatico:'📈 Juros pedagógico automático', rendimento_manual:'📈 Juros pedagógico manual',
+  taxa_debito:'⚠️ Taxa aplicada', taxa_bonus:'⭐ Bônus aplicado',
+  estorno_credito:'↩️ Estorno (crédito)', estorno_debito:'↩️ Estorno (débito)',
+  compra_loja:'🛍️ Compra na loja', estorno_compra:'↩️ Estorno de compra', pix_qrcode:'📱 PIX (QR Code)'
 };
 const TIPOS_SINAL_PROPRIO = ['rendimento_automatico', 'rendimento_manual'];
 const TIPOS_DEBITO = ['saque','transferencia_enviada','taxa_debito','estorno_debito','compra_loja','pix_qrcode'];
@@ -466,148 +315,61 @@ function renderDados(data){
     ? data.pacotes_ativos.map(p => `<span class="tag-pacote">${p.nome} (+${p.taxa_mensal}%/mês${p.data_fim ? ', até ' + new Date(p.data_fim).toLocaleDateString('pt-BR') : ''})<br><span style="font-size:10.5px; opacity:0.85;">rendendo desde ${new Date(p.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}</span></span>`).join('')
     : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhum pacote ativo no momento.</p>';
 
-  const extratoEl = $('lista-extrato');
-  extratoEl.innerHTML = data.extrato.length
-    ? data.extrato.map(t => {
-        const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
-        const quando = new Date(t.criado_em).toLocaleString('pt-BR');
+  renderExtratoAgrupado(data.extrato || []);
+}
 
-        let extra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
-        if (t.contra_aluno_nome) {
-          const rotuloContra = t.tipo === 'transferencia_enviada' ? 'Para' : 'De';
-          extra += ` · ${rotuloContra}: ${t.contra_aluno_nome}${t.contra_turma_nome ? ' · ' + t.contra_turma_nome : ''}`;
-        }
-
-        const infoIcone = t.pacote_nome
-          ? ` <span class="mono" title="${(t.pacote_descricao||'').replace(/"/g,'&quot;')}" style="cursor:help; color:var(--sun-2);">ℹ️</span>`
-          : '';
-
-        return `<div class="recibo-linha">
-          <div>
-            <div>${rotulosTipo[t.tipo] || t.tipo}${infoIcone}</div>
-            <div class="quando">${extra}</div>
-          </div>
-          <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}</div>
-        </div>`;
-      }).join('')
-    : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhuma movimentação ainda.</p>';
-
-  renderMeusPedidos(data.pedidos || []);
-
-  $('minha-chave-ra').textContent = 'RA: ' + data.aluno.ra;
-  gerarQRCode($('minha-chave-canvas'), 'WLPIX:' + data.aluno.ra);
-
-  if (data.loja_ativa) {
-    $('cartao-loja').classList.remove('hidden');
-    carregarProdutosLoja();
-  } else {
-    $('cartao-loja').classList.add('hidden');
+function linhaExtratoAluno(t, dentroDeGrupo){
+  const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
+  const quando = new Date(t.criado_em).toLocaleString('pt-BR');
+  let extra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
+  if (t.contra_aluno_nome) {
+    const rotuloContra = t.tipo === 'transferencia_enviada' ? 'Para' : 'De';
+    extra += ` · ${rotuloContra}: ${t.contra_aluno_nome}${t.contra_turma_nome ? ' · ' + t.contra_turma_nome : ''}`;
   }
+  const infoIcone = t.pacote_nome
+    ? ` <span title="${(t.pacote_descricao||'').replace(/"/g,'&quot;')}" style="cursor:help;">ℹ️</span>` : '';
+  return `<div class="recibo-linha"${dentroDeGrupo ? ' style="padding-left:22px; opacity:0.92;"' : ''}>
+    <div><div>${rotulosTipo[t.tipo] || t.tipo}${infoIcone}</div><div class="quando">${extra}</div></div>
+    <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}</div>
+  </div>`;
 }
 
-// ---------------------------------------------------------------- LOJINHA
-let produtosLojaCache = [];
-let carrinhoAluno = [];
-
-async function carregarProdutosLoja(){
-  const { data, error } = await supabase.rpc('fn_listar_produtos_loja');
-  const cont = $('lista-produtos-loja');
-  if (error) { cont.textContent = 'Erro ao carregar produtos.'; return; }
-  produtosLojaCache = data || [];
-
-  cont.innerHTML = produtosLojaCache.length
-    ? produtosLojaCache.map(p => `
-        <div class="recibo-linha">
-          <div>
-            <div class="tipo">${p.nome}</div>
-            <div class="quando">${p.descricao || ''}${p.estoque !== null ? ` · ${p.estoque} disponível(is)` : ''}</div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="mono">${fmt(p.preco)}</span>
-            <button data-add-produto="${p.id}" class="btn-ghost btn-small">+ Adicionar</button>
-          </div>
-        </div>`).join('')
-    : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhum produto disponível no momento.</p>';
-
-  cont.querySelectorAll('button[data-add-produto]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const produto = produtosLojaCache.find(p => p.id === btn.dataset.addProduto);
-      if (!produto) return;
-      const existente = carrinhoAluno.find(i => i.produto_id === produto.id);
-      if (existente) existente.quantidade += 1;
-      else carrinhoAluno.push({ produto_id: produto.id, nome: produto.nome, preco: produto.preco, quantidade: 1 });
-      renderCarrinhoAluno();
-    });
-  });
+const TIPOS_AGRUPAVEIS = ['rendimento_automatico','taxa_debito','taxa_bonus'];
+function agruparExtrato(linhas){
+  const grupos = [];
+  for (const t of linhas) {
+    const ult = grupos[grupos.length - 1];
+    const chave = t.tipo + '|' + (t.pacote_nome || '') + '|' + (t.motivo_nome || '');
+    if (TIPOS_AGRUPAVEIS.includes(t.tipo) && ult && ult.agrupavel && ult.chave === chave) ult.itens.push(t);
+    else grupos.push({ chave, agrupavel: TIPOS_AGRUPAVEIS.includes(t.tipo), itens: [t] });
+  }
+  return grupos;
 }
 
-function renderCarrinhoAluno(){
-  const cont = $('loja-carrinho');
-  cont.innerHTML = carrinhoAluno.length
-    ? carrinhoAluno.map((item, idx) => `
-        <div class="recibo-linha">
-          <div>${item.quantidade}x ${item.nome}</div>
-          <div class="mono">
-            ${fmt(item.preco * item.quantidade)}
-            <button data-remover-carrinho="${idx}" style="background:none; border:none; color:var(--red); cursor:pointer; margin-left:8px;">✕</button>
-          </div>
-        </div>`).join('')
-    : '<p style="color:var(--ink-soft); font-size:13px;">Seu carrinho está vazio.</p>';
-
-  cont.querySelectorAll('button[data-remover-carrinho]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      carrinhoAluno.splice(parseInt(btn.dataset.removerCarrinho, 10), 1);
-      renderCarrinhoAluno();
-    });
-  });
-
-  const total = carrinhoAluno.reduce((s, i) => s + i.preco * i.quantidade, 0);
-  $('loja-total').textContent = fmt(total);
-}
-
-$('btn-loja-comprar').addEventListener('click', async () => {
-  const erroEl = $('loja-erro');
-  erroEl.textContent = '';
-  if (!carrinhoAluno.length) { erroEl.textContent = 'Seu carrinho está vazio.'; return; }
-
-  const total = carrinhoAluno.reduce((s, i) => s + i.preco * i.quantidade, 0);
-  if (!confirm(`Confirma a compra de ${fmt(total)}? O valor será debitado agora e você retira na escola.`)) return;
-
-  const ra = sessionStorage.getItem('bancowl_ra');
-  const senha = sessionStorage.getItem('bancowl_senha');
-  const itens = carrinhoAluno.map(i => ({ produto_id: i.produto_id, quantidade: i.quantidade }));
-
-  const { data, error } = await supabase.rpc('fn_aluno_comprar', { p_ra: ra, p_senha: senha, p_itens: itens });
-  if (error) { erroEl.textContent = error.message.replace(/^.*: /, ''); return; }
-
-  carrinhoAluno = [];
-  renderCarrinhoAluno();
-
-  // recarrega os dados da conta (saldo, extrato, pedidos, estoque)
-  const { data: dadosAtualizados } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha });
-  if (dadosAtualizados) renderDados(dadosAtualizados);
-  toast(`✅ Compra de ${fmt(total)} confirmada! Retire na escola.`);
-});
-
-function renderMeusPedidos(pedidos){
-  const secao = $('cartao-meus-pedidos');
-  const cont = $('lista-meus-pedidos');
-  if (!pedidos.length) { secao.classList.add('hidden'); return; }
-  secao.classList.remove('hidden');
-
-  const rotuloStatus = { pendente: '🟡 Aguardando retirada na escola', entregue: '✅ Retirado', cancelado: '❌ Cancelado' };
-
-  cont.innerHTML = pedidos.map(p => `
-    <div class="recibo-linha" style="align-items:flex-start;">
-      <div>
-        <div class="tipo">${rotuloStatus[p.status] || p.status}</div>
-        <div class="quando">${new Date(p.criado_em).toLocaleString('pt-BR')}</div>
-        <div style="font-size:12.5px; color:var(--ink-soft); margin-top:4px;">
-          ${(p.itens || []).map(i => `${i.quantidade}x ${i.nome_produto}`).join(', ')}
-        </div>
-      </div>
-      <div class="mono" style="font-weight:700;">${fmt(p.total)}</div>
-    </div>`).join('');
+function renderExtratoAgrupado(linhas){
+  const el = $('lista-extrato');
+  if (!linhas.length) { el.innerHTML = '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhuma movimentação ainda. 🌱</p>'; return; }
+  el.innerHTML = agruparExtrato(linhas).map((g, i) => {
+    if (g.itens.length < 2) return linhaExtratoAluno(g.itens[0], false);
+    const soma = g.itens.reduce((s, t) => {
+      const { sinal } = calcularSinalClasse(t.tipo, t.valor);
+      return s + (sinal === '-' ? -1 : 1) * Math.abs(Number(t.valor));
+    }, 0);
+    const t0 = g.itens[0], tN = g.itens[g.itens.length - 1];
+    const d = (x) => new Date(x.criado_em).toLocaleDateString('pt-BR');
+    return `<div class="recibo-linha" data-grupo-toggle="${i}" style="cursor:pointer; background:rgba(124,58,237,0.07); border-radius:10px;">
+      <div><div>🔁 ${rotulosTipo[t0.tipo] || t0.tipo} <span style="font-size:12px;">× ${g.itens.length}</span> <span id="seta-${i}">▸</span></div>
+      <div class="quando">${d(tN)} a ${d(t0)} · toque para ver cada lançamento</div></div>
+      <div class="mono ${soma < 0 ? 'valor-neg' : 'valor-pos'}">${soma < 0 ? '-' : '+'} ${fmt(Math.abs(soma))}</div>
+    </div>
+    <div data-grupo-detalhe="${i}" class="hidden">${g.itens.map(t => linhaExtratoAluno(t, true)).join('')}</div>`;
+  }).join('');
+  el.querySelectorAll('[data-grupo-toggle]').forEach(h => h.addEventListener('click', () => {
+    const i = h.dataset.grupoToggle;
+    const det = el.querySelector(`[data-grupo-detalhe="${i}"]`);
+    det.classList.toggle('hidden');
+    $('seta-' + i).textContent = det.classList.contains('hidden') ? '▸' : '▾';
+  }));
 }
 
 function toast(msg, erro){
@@ -633,61 +395,6 @@ function toast(msg, erro){
   renderDados(data);
 })();
 
-// ---------------------------------------------------------------- PAGAR VIA PIX QR CODE
-function extrairIdCobranca(texto){
-  const t = texto.trim();
-  return t.startsWith('WLBANK-COBRANCA:') ? t.slice('WLBANK-COBRANCA:'.length) : t;
-}
-
-async function consultarEExibirCobranca(cobrancaId){
-  const cont = $('pagar-cobranca-detalhe');
-  cont.innerHTML = 'Consultando...';
-  const { data, error } = await supabase.rpc('fn_consultar_cobranca', { p_cobranca_id: cobrancaId });
-  if (error || !data) { cont.innerHTML = '<p style="color:var(--red); font-size:13px;">Código inválido ou não encontrado.</p>'; return; }
-
-  if (data.status !== 'pendente') {
-    const msg = { paga: 'Esta cobrança já foi paga.', cancelada: 'Esta cobrança foi cancelada.', expirada: 'Esta cobrança expirou.' }[data.status];
-    cont.innerHTML = `<p style="color:var(--red); font-size:13px;">${msg}</p>`;
-    return;
-  }
-
-  const itensTexto = (data.itens || []).map(i => `${i.quantidade}x ${i.nome}`).join(', ');
-  cont.innerHTML = `
-    <div class="recibo-linha" style="align-items:flex-start;">
-      <div>
-        <div class="tipo">${data.descricao || 'Cobrança'}</div>
-        <div class="quando">${itensTexto}</div>
-      </div>
-      <div class="mono" style="font-weight:700;">${fmt(data.valor)}</div>
-    </div>
-    <button id="btn-confirmar-pagamento-cobranca" class="btn-gold" style="width:100%; margin-top:10px;">✅ Confirmar pagamento</button>`;
-
-  $('btn-confirmar-pagamento-cobranca').addEventListener('click', async () => {
-    if (!confirm(`Confirma pagar ${fmt(data.valor)}? O valor será debitado da sua conta agora.`)) return;
-    const ra = sessionStorage.getItem('bancowl_ra');
-    const senha = sessionStorage.getItem('bancowl_senha');
-    const { error: errPagar } = await supabase.rpc('fn_aluno_pagar_cobranca', { p_ra: ra, p_senha: senha, p_cobranca_id: cobrancaId });
-    if (errPagar) { toast('Erro: ' + errPagar.message.replace(/^.*: /, ''), true); return; }
-
-    cont.innerHTML = '';
-    $('pagar-codigo-manual').value = '';
-    const { data: dadosAtualizados } = await supabase.rpc('fn_login_aluno', { p_ra: ra, p_senha: senha });
-    if (dadosAtualizados) renderDados(dadosAtualizados);
-    toast(`✅ Pagamento de ${fmt(data.valor)} confirmado!`);
-  });
-}
-
-$('btn-pagar-escanear').addEventListener('click', async () => {
-  const lido = await escanearQRCode($('pagar-qrcode-area'));
-  if (!lido) return;
-  await consultarEExibirCobranca(extrairIdCobranca(lido));
-});
-
-$('btn-pagar-consultar').addEventListener('click', async () => {
-  const codigo = $('pagar-codigo-manual').value.trim();
-  if (!codigo) return;
-  await consultarEExibirCobranca(extrairIdCobranca(codigo));
-});
 </script>
 </body>
 </html>

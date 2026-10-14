@@ -248,6 +248,18 @@
     aside.rail{ width:100%; border-right:none; border-bottom:1px solid rgba(255,201,77,0.18); }
     .grid-2{ grid-template-columns:1fr; }
   }
+
+  /* ---- Visual jovem e alegre ---- */
+  @keyframes pop-in{ from{ opacity:0; transform:translateY(10px) scale(.97);} to{ opacity:1; transform:none;} }
+  @keyframes flutuar{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+  .cartao, .cartao-saldo{ animation:pop-in .45s ease both; }
+  .cartao{ transition:transform .2s, box-shadow .2s; }
+  .cartao:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(124,58,237,.15); }
+  button{ transition:transform .15s; }
+  button:hover{ transform:scale(1.04); }
+  .emoji-flutua{ display:inline-block; animation:flutuar 2.6s ease-in-out infinite; }
+  .recibo-linha[data-grupo-toggle]:hover{ filter:brightness(1.05); }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
@@ -719,6 +731,12 @@
     <div class="cartao" style="border-top-color:var(--sun);">
       <h3>🏫 Por turma</h3>
       <div id="rel-por-turma">—</div>
+    </div>
+
+    <div class="cartao" style="border-top-color:var(--coral);">
+      <h3>⚠️ Taxas e bônus aplicados por motivo</h3>
+      <div style="position:relative; height:260px;"><canvas id="grafico-taxas"></canvas></div>
+      <div id="taxas-sem-dados" class="hidden" style="font-size:13px; color:var(--ink-soft);">Nenhuma taxa ou bônus aplicado no período.</div>
     </div>
 
     <div class="cartao">
@@ -1540,80 +1558,96 @@ async function abrirModal(tipo, aluno){
   });
 }
 
+const ROTULOS_EXTRATO = {
+  deposito:'💰 Depósito', saque:'🏧 Saque',
+  transferencia_enviada:'💸 PIX enviado', transferencia_recebida:'🎁 PIX recebido',
+  rendimento_automatico:'📈 Juros pedagógico automático', rendimento_manual:'📈 Juros pedagógico manual',
+  taxa_debito:'⚠️ Taxa aplicada', taxa_bonus:'⭐ Bônus aplicado',
+  estorno_credito:'↩️ Estorno (crédito)', estorno_debito:'↩️ Estorno (débito)',
+  compra_loja:'🛍️ Compra na loja', estorno_compra:'↩️ Estorno de compra', pix_qrcode:'📱 PIX (QR Code)'
+};
+const TIPOS_REVERSIVEIS_EXTRATO = ['deposito','saque','transferencia_enviada','transferencia_recebida','rendimento_automatico','rendimento_manual','taxa_debito','taxa_bonus'];
+const TIPOS_AGRUPAVEIS_EXTRATO = ['rendimento_automatico','taxa_debito','taxa_bonus'];
+
+function agruparExtratoConsecutivo(linhas){
+  const grupos = [];
+  for (const t of linhas) {
+    const agr = TIPOS_AGRUPAVEIS_EXTRATO.includes(t.tipo);
+    const chave = t.tipo + '|' + (t.pacote_nome || '') + '|' + (t.motivo_nome || '');
+    const ult = grupos[grupos.length - 1];
+    if (agr && ult && ult.agrupavel && ult.chave === chave) ult.itens.push(t);
+    else grupos.push({ chave, agrupavel: agr, itens: [t] });
+  }
+  return grupos;
+}
+
+function construirLinhaExtrato(t, dentroDeGrupo){
+  const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
+  const quando = new Date(t.criado_em).toLocaleString('pt-BR');
+  let linhasExtra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
+  if (t.professor_email && t.professor_email !== 'sistema') linhasExtra += ` · por ${t.professor_email}`;
+  if (t.contra_aluno_nome) {
+    const rotuloContra = t.tipo === 'transferencia_enviada' ? 'Para' : 'De';
+    linhasExtra += ` · ${rotuloContra}: ${t.contra_aluno_nome}${t.contra_aluno_numero ? ' (Nº ' + t.contra_aluno_numero + ')' : ''}${t.contra_turma_nome ? ' · ' + t.contra_turma_nome : ''}`;
+  }
+  const infoIcone = t.pacote_nome
+    ? `<button class="info-pacote" data-nome="${t.pacote_nome.replace(/"/g,'&quot;')}" data-desc="${(t.pacote_descricao||'Sem descrição.').replace(/"/g,'&quot;')}"
+         style="background:none; border:none; cursor:pointer; font-size:13px; padding:0 0 0 6px;" title="Ver detalhes do plano">ℹ️</button>` : '';
+  const podeEstornar = !t.estornada && TIPOS_REVERSIVEIS_EXTRATO.includes(t.tipo);
+  const tagEstorno = t.estornada
+    ? `<span style="font-size:10.5px; color:var(--ink-soft); margin-left:6px;">(estornada)</span>`
+    : podeEstornar
+      ? `<button class="btn-estornar-tx" data-id="${t.id}" style="background:none; border:none; color:var(--coral); cursor:pointer; font-size:11px; margin-left:8px; text-decoration:underline;">Estornar</button>` : '';
+  return `<div class="recibo-linha"${dentroDeGrupo ? ' style="padding-left:22px;"' : ''}>
+    <div><div class="tipo">${ROTULOS_EXTRATO[t.tipo] || t.tipo}${infoIcone}</div><div class="quando">${linhasExtra}</div></div>
+    <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}${tagEstorno}</div>
+  </div>`;
+}
+
 async function carregarExtrato(alunoId){
   const { data, error } = await supabase
-    .from('vw_extrato')
-    .select('*')
-    .eq('aluno_id', alunoId)
-    .order('criado_em', { ascending: false })
-    .limit(50);
+    .from('vw_extrato').select('*').eq('aluno_id', alunoId)
+    .order('criado_em', { ascending: false }).limit(300);
 
   const cont = $('modal-extrato');
   if (error) { cont.textContent = 'Erro ao carregar extrato: ' + error.message; return; }
   if (!data.length) { cont.textContent = 'Nenhuma movimentação ainda.'; return; }
 
-  const rotulos = {
-    deposito:'Depósito', saque:'Saque',
-    transferencia_enviada:'PIX enviado', transferencia_recebida:'PIX recebido',
-    rendimento_automatico:'Juros pedagógico automático', rendimento_manual:'Juros pedagógico manual',
-    taxa_debito:'Taxa aplicada', taxa_bonus:'Bônus aplicado',
-    estorno_credito:'Estorno (crédito)', estorno_debito:'Estorno (débito)',
-    compra_loja:'Compra na loja', estorno_compra:'Estorno de compra', pix_qrcode:'PIX (QR Code)'
-  };
-  const reversiveis = ['deposito','saque','transferencia_enviada','transferencia_recebida','rendimento_automatico','rendimento_manual','taxa_debito','taxa_bonus'];
-
-  cont.innerHTML = data.map(t => {
-    const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
-    const quando = new Date(t.criado_em).toLocaleString('pt-BR');
-
-    let linhasExtra = `${quando}${t.descricao ? ' · ' + t.descricao : ''}`;
-    if (t.professor_email && t.professor_email !== 'sistema') {
-      linhasExtra += ` · por ${t.professor_email}`;
-    }
-    if (t.contra_aluno_nome) {
-      const rotuloContra = t.tipo === 'transferencia_enviada' ? 'Para' : 'De';
-      linhasExtra += ` · ${rotuloContra}: ${t.contra_aluno_nome}${t.contra_aluno_numero ? ' (Nº ' + t.contra_aluno_numero + ')' : ''}${t.contra_turma_nome ? ' · ' + t.contra_turma_nome : ''}`;
-    }
-
-    const infoIcone = t.pacote_nome
-      ? `<button class="info-pacote" data-nome="${t.pacote_nome.replace(/"/g,'&quot;')}" data-desc="${(t.pacote_descricao||'Sem descrição.').replace(/"/g,'&quot;')}"
-           style="background:none; border:none; cursor:pointer; font-size:13px; padding:0 0 0 6px;" title="Ver detalhes do plano">ℹ️</button>`
-      : '';
-
-    const podeEstornar = !t.estornada && reversiveis.includes(t.tipo);
-    const tagEstorno = t.estornada
-      ? `<span style="font-size:10.5px; color:var(--ink-soft); margin-left:6px;">(estornada)</span>`
-      : podeEstornar
-        ? `<button class="btn-estornar-tx" data-id="${t.id}" style="background:none; border:none; color:var(--coral); cursor:pointer; font-size:11px; margin-left:8px; text-decoration:underline;">Estornar</button>`
-        : '';
-
-    return `<div class="recibo-linha">
-      <div>
-        <div class="tipo">${rotulos[t.tipo] || t.tipo}${infoIcone}</div>
-        <div class="quando">${linhasExtra}</div>
-      </div>
-      <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}${tagEstorno}</div>
-    </div>`;
+  cont.innerHTML = agruparExtratoConsecutivo(data).map((g, i) => {
+    if (g.itens.length < 2) return construirLinhaExtrato(g.itens[0], false);
+    const soma = g.itens.reduce((s, t) => s + (calcularSinalClasse(t.tipo, t.valor).sinal === '-' ? -1 : 1) * Math.abs(Number(t.valor)), 0);
+    const t0 = g.itens[0], tN = g.itens[g.itens.length - 1];
+    const d = (x) => new Date(x.criado_em).toLocaleDateString('pt-BR');
+    return `<div class="recibo-linha" data-grupo-toggle="${i}" style="cursor:pointer; background:rgba(124,58,237,0.07); border-radius:10px;">
+      <div><div class="tipo">🔁 ${ROTULOS_EXTRATO[t0.tipo] || t0.tipo} <span style="font-size:12px;">× ${g.itens.length}</span> <span id="seta-g-${i}">▸</span></div>
+      <div class="quando">${d(tN)} a ${d(t0)} · clique para ver cada lançamento</div></div>
+      <div class="mono ${soma < 0 ? 'valor-neg' : 'valor-pos'}">${soma < 0 ? '-' : '+'} ${fmt(Math.abs(soma))}</div>
+    </div>
+    <div data-grupo-detalhe="${i}" class="hidden">${g.itens.map(t => construirLinhaExtrato(t, true)).join('')}</div>`;
   }).join('');
 
-  cont.querySelectorAll('.info-pacote').forEach(btn => {
-    btn.addEventListener('click', () => {
-      alert(`📈 ${btn.dataset.nome}\n\n${btn.dataset.desc}`);
-    });
-  });
+  cont.querySelectorAll('[data-grupo-toggle]').forEach(h => h.addEventListener('click', () => {
+    const i = h.dataset.grupoToggle;
+    const det = cont.querySelector(`[data-grupo-detalhe="${i}"]`);
+    det.classList.toggle('hidden');
+    $('seta-g-' + i).textContent = det.classList.contains('hidden') ? '▸' : '▾';
+  }));
 
-  cont.querySelectorAll('.btn-estornar-tx').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('Tem certeza que deseja estornar esta transação? Essa ação reverte o valor imediatamente.')) return;
-      const motivo = prompt('Descreva o motivo do estorno:');
-      if (motivo === null || motivo.trim() === '') { if (motivo !== null) toast('Informe uma descrição para o estorno.', true); return; }
-      const { error } = await supabase.rpc('fn_estornar_transacao', { p_transacao_id: btn.dataset.id, p_descricao: motivo.trim() });
-      if (error) { toast('Erro: ' + error.message, true); return; }
-      await carregarExtrato(alunoId);
-      await carregarAlunos();
-      toast('✅ Transação estornada com sucesso.');
-    });
-  });
+  cont.querySelectorAll('.info-pacote').forEach(btn => btn.addEventListener('click', (e) => {
+    e.stopPropagation(); alert(`📈 ${btn.dataset.nome}\n\n${btn.dataset.desc}`);
+  }));
+
+  cont.querySelectorAll('.btn-estornar-tx').forEach(btn => btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm('Tem certeza que deseja estornar esta transação? Essa ação reverte o valor imediatamente.')) return;
+    const motivo = prompt('Descreva o motivo do estorno:');
+    if (motivo === null || motivo.trim() === '') { if (motivo !== null) toast('Informe uma descrição para o estorno.', true); return; }
+    const { error } = await supabase.rpc('fn_estornar_transacao', { p_transacao_id: btn.dataset.id, p_descricao: motivo.trim() });
+    if (error) { toast('Erro: ' + error.message, true); return; }
+    await carregarExtrato(alunoId);
+    await carregarAlunos();
+    toast('✅ Transação estornada com sucesso.');
+  }));
 }
 
 // ---------------------------------------------------------------- TELA DE CONFIGURAÇÕES
@@ -2230,7 +2264,8 @@ async function gerarRelatorio(){
   let query = supabase.from('vw_extrato').select('*')
     .gte('criado_em', dataInicio + 'T00:00:00')
     .lte('criado_em', dataFim + 'T23:59:59')
-    .order('criado_em', { ascending: false });
+    .order('criado_em', { ascending: false })
+    .range(0, 9999);
 
   if (escopo !== 'todas') query = query.eq('turma_nome', turmasCache.find(t => t.id === escopo)?.nome);
   if (tipoFiltro !== 'todos' && gruposTipo[tipoFiltro]) query = query.in('tipo', gruposTipo[tipoFiltro]);
@@ -2239,11 +2274,13 @@ async function gerarRelatorio(){
   if (error) { toast('Erro ao gerar relatório: ' + error.message, true); return; }
 
   ultimoRelatorio = data || [];
+  if (ultimoRelatorio.length >= 10000) toast('⚠️ Relatório limitado a 10.000 linhas — reduza o período.', true);
   renderResumoRelatorio(ultimoRelatorio);
   renderTabelaRelatorio(ultimoRelatorio);
   renderGraficoPizza(ultimoRelatorio);
   renderGraficoLinha(ultimoRelatorio);
   renderPorTurma(ultimoRelatorio);
+  renderGraficoTaxas(ultimoRelatorio);
   $('btn-exportar-csv').classList.toggle('hidden', !ultimoRelatorio.length);
 }
 
@@ -2281,6 +2318,32 @@ function renderTabelaRelatorio(linhas){
       <td class="mono ${classe}" style="text-align:right;">${sinal} ${fmt(Math.abs(l.valor))}</td>
     </tr>`;
   }).join('');
+}
+
+// ---- Gráfico de taxas e bônus por motivo
+let chartTaxas = null;
+function renderGraficoTaxas(linhas){
+  const canvas = $('grafico-taxas');
+  const vazio = $('taxas-sem-dados');
+  if (typeof Chart === 'undefined') return;
+  const grupos = {};
+  linhas.filter(l => l.tipo === 'taxa_debito' || l.tipo === 'taxa_bonus').forEach(l => {
+    const nome = l.motivo_nome || (l.tipo === 'taxa_bonus' ? 'Bônus (sem motivo salvo)' : 'Débito (sem motivo salvo)');
+    const g = grupos[nome] = grupos[nome] || { total: 0, qtd: 0, bonus: l.tipo === 'taxa_bonus' };
+    g.total += Math.abs(Number(l.valor)); g.qtd += 1;
+  });
+  const nomes = Object.keys(grupos).sort((a, b) => grupos[b].total - grupos[a].total);
+  if (chartTaxas) { chartTaxas.destroy(); chartTaxas = null; }
+  canvas.parentElement.classList.toggle('hidden', !nomes.length);
+  vazio.classList.toggle('hidden', !!nomes.length);
+  if (!nomes.length) return;
+  chartTaxas = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: nomes, datasets: [{ label: 'Total (WL)', data: nomes.map(n => grupos[n].total),
+      backgroundColor: nomes.map(n => grupos[n].bonus ? corVar('green') : corVar('coral')), borderRadius: 8 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false },
+      tooltip: { callbacks: { afterLabel: (c) => 'Aplicado ' + grupos[nomes[c.dataIndex]].qtd + 'x' } } } }
+  });
 }
 
 // ---- Gráfico de pizza: distribuição por tipo de movimentação
@@ -2380,8 +2443,9 @@ function renderGraficoLinha(linhas){
 function renderPorTurma(linhas){
   const porTurma = {};
   linhas.forEach(l => {
-    if (!porTurma[l.turma_nome]) porTurma[l.turma_nome] = { total: 0, movimentos: 0 };
+    if (!porTurma[l.turma_nome]) porTurma[l.turma_nome] = { total: 0, movimentos: 0, juros: 0 };
     porTurma[l.turma_nome].total += Math.abs(Number(l.valor));
+    if (l.tipo === 'rendimento_automatico' || l.tipo === 'rendimento_manual') porTurma[l.turma_nome].juros += Number(l.valor);
     porTurma[l.turma_nome].movimentos += 1;
   });
   const turmas = Object.entries(porTurma).sort((a,b) => b[1].total - a[1].total);
@@ -2398,7 +2462,7 @@ function renderPorTurma(linhas){
     return `
       <div style="margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
-          <span><strong>${nome}</strong> <span style="color:var(--ink-soft);">(${dados.movimentos} movimentações)</span></span>
+          <span><strong>${nome}</strong> <span style="color:var(--ink-soft);">(${dados.movimentos} movimentações · 📈 juros líquidos ${fmt(dados.juros)})</span></span>
           <span class="mono" style="font-weight:700; color:var(--${cor});">${fmt(dados.total)}</span>
         </div>
         <div style="background:rgba(var(--border-rgb),0.1); border-radius:6px; height:10px; overflow:hidden;">
