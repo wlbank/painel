@@ -708,7 +708,8 @@
             <option value="creditos">Só créditos (depósitos, PIX recebido, juros, bônus)</option>
             <option value="debitos">Só débitos (saques, PIX enviado, taxas)</option>
             <option value="rendimentos">Só juros pedagógicos</option>
-            <option value="taxas">Só taxas e bônus comportamentais</option>
+            <option value="taxas">Só taxas (débitos comportamentais)</option>
+            <option value="bonus">Só bônus (créditos comportamentais)</option>
             <option value="pix">Só PIX</option>
           </select>
         </div>
@@ -723,6 +724,16 @@
 
     <div id="rel-resumo" class="grid-2" style="margin-bottom:20px; gap:14px;"></div>
 
+    <div class="cartao" style="border-top-color:var(--green);">
+      <h3>💼 Saldo com os alunos hoje (já com juros, taxas e bônus)</h3>
+      <div id="rel-saldos">—</div>
+    </div>
+
+    <div class="cartao" style="border-top-color:var(--sun);">
+      <h3>🧮 Composição das movimentações no período</h3>
+      <div id="rel-composicao">—</div>
+    </div>
+
     <div class="grid-2" style="align-items:stretch;">
       <div class="cartao" style="border-top-color:var(--violet);">
         <h3>🥧 Distribuição por tipo</h3>
@@ -736,7 +747,7 @@
     </div>
 
     <div class="cartao" style="border-top-color:var(--sun);">
-      <h3>🏫 Por turma</h3>
+      <h3>🏫 Por turma (movimentos do período + saldo de hoje)</h3>
       <div id="rel-por-turma">—</div>
     </div>
 
@@ -2284,7 +2295,8 @@ const gruposTipo = {
   creditos: ['deposito','transferencia_recebida','rendimento_automatico','rendimento_manual','taxa_bonus','estorno_credito'],
   debitos: ['saque','transferencia_enviada','taxa_debito','estorno_debito'],
   rendimentos: ['rendimento_automatico','rendimento_manual'],
-  taxas: ['taxa_debito','taxa_bonus'],
+  taxas: ['taxa_debito'],
+  bonus: ['taxa_bonus'],
   pix: ['transferencia_enviada','transferencia_recebida']
 };
 const rotulosRelatorio = {
@@ -2330,7 +2342,12 @@ async function gerarRelatorio(){
   renderTabelaRelatorio(ultimoRelatorio);
   renderGraficoPizza(ultimoRelatorio);
   renderGraficoLinha(ultimoRelatorio);
-  renderPorTurma(ultimoRelatorio);
+  let contasSaldo = [];
+  try { contasSaldo = await buscarSaldosAtuais(nomeTurmaFiltro); }
+  catch (e) { toast('Não foi possível carregar os saldos atuais: ' + e.message, true); }
+  renderSaldosAlunos(contasSaldo);
+  renderComposicao(ultimoRelatorio);
+  renderPorTurma(ultimoRelatorio, contasSaldo);
   renderGraficoTaxas(ultimoRelatorio);
   $('btn-exportar-csv').classList.toggle('hidden', !ultimoRelatorio.length);
 }
@@ -2343,7 +2360,8 @@ function renderResumoRelatorio(linhas){
     { titulo: 'Total de créditos', valor: totalCreditos, cor: 'green', icone: '💰' },
     { titulo: 'Total de débitos', valor: totalDebitos, cor: 'red', icone: '🏧' },
     { titulo: 'Juros pedagógicos pagos (líquido)', valor: somaPorGrupo(gruposTipo.rendimentos), cor: 'sun-2', icone: '📈' },
-    { titulo: 'Taxas e bônus', valor: somaPorGrupo(gruposTipo.taxas), cor: 'coral', icone: '⚠️' },
+    { titulo: 'Taxas aplicadas (débitos)', valor: somaPorGrupo(gruposTipo.taxas), cor: 'coral', icone: '⚠️' },
+    { titulo: 'Bônus concedidos (créditos)', valor: somaPorGrupo(gruposTipo.bonus), cor: 'green', icone: '⭐' },
     { titulo: 'Total em PIX', valor: somaPorGrupo(gruposTipo.pix), cor: 'mint', icone: '💸' },
     { titulo: 'Nº de movimentações', valor: linhas.length, cor: 'violet', icone: '🧾', semMoeda: true }
   ];
@@ -2408,7 +2426,8 @@ function renderGraficoPizza(linhas){
     { rotulo: 'Saques',       tipos: ['saque'],                                cor: corVar('red') },
     { rotulo: 'PIX',          tipos: ['transferencia_enviada','transferencia_recebida'], cor: corVar('mint') },
     { rotulo: 'Juros',        tipos: ['rendimento_automatico','rendimento_manual'],      cor: corVar('sun-2') },
-    { rotulo: 'Taxas/Bônus',  tipos: ['taxa_debito','taxa_bonus'],             cor: corVar('coral') },
+    { rotulo: 'Taxas',        tipos: ['taxa_debito'],                          cor: corVar('coral') },
+    { rotulo: 'Bônus',        tipos: ['taxa_bonus'],                           cor: '#84cc16' },
     { rotulo: 'Loja',         tipos: ['compra_loja','pix_qrcode'],             cor: corVar('violet') },
     { rotulo: 'Estornos',     tipos: ['estorno_credito','estorno_debito','estorno_compra'], cor: corVar('pink') },
   ];
@@ -2491,36 +2510,123 @@ function renderGraficoLinha(linhas){
 }
 
 // ---- Tabela por turma, com barrinha colorida de volume
-function renderPorTurma(linhas){
-  const porTurma = {};
+async function buscarSaldosAtuais(nomeTurma){
+  let todas = [];
+  for (let ini = 0; ini < 20000; ini += 1000) {
+    const { data, error } = await supabase.from('contas')
+      .select('id, saldo, alunos(id, nome, numero, situacao, turmas(nome))')
+      .order('id').range(ini, ini + 999);
+    if (error) throw new Error(error.message);
+    todas = todas.concat(data || []);
+    if (!data || data.length < 1000) break;
+  }
+  return todas
+    .filter(c => c.alunos)
+    .map(c => ({ saldo: Number(c.saldo), nome: c.alunos.nome, numero: c.alunos.numero, situacao: c.alunos.situacao, turma: c.alunos.turmas?.nome || '—' }))
+    .filter(c => !nomeTurma || c.turma === nomeTurma);
+}
+
+function renderSaldosAlunos(contas){
+  const el = $('rel-saldos');
+  if (!contas.length) { el.innerHTML = '<p style="color:var(--ink-soft); font-size:13px;">Sem contas para o escopo escolhido.</p>'; return; }
+  const total = contas.reduce((s, c) => s + c.saldo, 0);
+  const media = total / contas.length;
+  const maior = contas.reduce((m, c) => c.saldo > m.saldo ? c : m, contas[0]);
+  const zerados = contas.filter(c => c.saldo <= 0).length;
+  const ord = contas.map(c => c.saldo).sort((a, b) => a - b);
+  const mediana = ord.length % 2 ? ord[(ord.length - 1) / 2] : (ord[ord.length / 2 - 1] + ord[ord.length / 2]) / 2;
+
+  const cartao = (rot, val, cor) => `<div style="padding:10px 12px; border-radius:12px; background:rgba(var(--border-rgb),0.06);">
+    <div style="font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;">${rot}</div>
+    <div class="mono" style="font-size:18px; font-weight:700; color:var(--${cor});">${val}</div></div>`;
+
+  const top = [...contas].sort((a, b) => b.saldo - a.saldo).slice(0, 10);
+  el.innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px;">
+      ${cartao('💰 Total com os alunos', fmt(total), 'green')}
+      ${cartao('👥 Contas', contas.length, 'violet')}
+      ${cartao('📊 Média por aluno', fmt(media), 'sun-2')}
+      ${cartao('📍 Mediana', fmt(mediana), 'mint')}
+      ${cartao('🏆 Maior saldo', fmt(maior.saldo), 'pink')}
+      ${cartao('🪙 Contas zeradas', zerados, 'coral')}
+    </div>
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:6px;">🏅 10 maiores saldos</div>
+    <table class="ledger"><thead><tr><th>#</th><th>Aluno</th><th>Turma</th><th style="text-align:right;">Saldo</th></tr></thead><tbody>
+    ${top.map((c, i) => `<tr><td>${i + 1}</td><td>${c.nome}${c.numero ? ' (Nº ' + c.numero + ')' : ''}</td><td>${c.turma}</td><td class="mono" style="text-align:right;">${fmt(c.saldo)}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderComposicao(linhas){
+  const el = $('rel-composicao');
+  if (!linhas.length) { el.innerHTML = '<p style="color:var(--ink-soft); font-size:13px;">Sem movimentações no período.</p>'; return; }
+  const porTipo = {};
   linhas.forEach(l => {
-    if (!porTurma[l.turma_nome]) porTurma[l.turma_nome] = { total: 0, movimentos: 0, juros: 0 };
-    porTurma[l.turma_nome].total += Math.abs(Number(l.valor));
-    if (l.tipo === 'rendimento_automatico' || l.tipo === 'rendimento_manual') porTurma[l.turma_nome].juros += Number(l.valor);
-    porTurma[l.turma_nome].movimentos += 1;
+    const g = porTipo[l.tipo] = porTipo[l.tipo] || { qtd: 0, total: 0, maior: 0 };
+    const v = Math.abs(Number(l.valor));
+    g.qtd += 1; g.total += v; if (v > g.maior) g.maior = v;
   });
-  const turmas = Object.entries(porTurma).sort((a,b) => b[1].total - a[1].total);
-  const cont = $('rel-por-turma');
-
-  if (!turmas.length) { cont.innerHTML = '<p style="color:var(--ink-soft); font-size:13px;">Sem movimentações no período.</p>'; return; }
-
-  const maiorTotal = Math.max(...turmas.map(t => t[1].total));
-  const cores = ['sun','coral','mint','violet','pink','green'];
-
-  cont.innerHTML = turmas.map(([nome, dados], i) => {
-    const pct = maiorTotal ? Math.round((dados.total / maiorTotal) * 100) : 0;
-    const cor = cores[i % cores.length];
-    return `
-      <div style="margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
-          <span><strong>${nome}</strong> <span style="color:var(--ink-soft);">(${dados.movimentos} movimentações · 📈 juros líquidos ${fmt(dados.juros)})</span></span>
-          <span class="mono" style="font-weight:700; color:var(--${cor});">${fmt(dados.total)}</span>
-        </div>
-        <div style="background:rgba(var(--border-rgb),0.1); border-radius:6px; height:10px; overflow:hidden;">
-          <div style="width:${pct}%; height:100%; background:var(--${cor}); border-radius:6px;"></div>
-        </div>
-      </div>`;
+  const credito = (tipo) => calcularSinalClasse(tipo, 1).sinal === '+';
+  const tipos = Object.keys(porTipo).sort((a, b) => porTipo[b].total - porTipo[a].total);
+  let net = 0;
+  const linhasTab = tipos.map(t => {
+    const g = porTipo[t];
+    // juros: soma com sinal (podem ser negativos); demais: crédito/débito pelo tipo
+    let efeito;
+    if (t === 'rendimento_automatico' || t === 'rendimento_manual') {
+      efeito = linhas.filter(l => l.tipo === t).reduce((s, l) => s + Number(l.valor), 0);
+    } else efeito = credito(t) ? g.total : -g.total;
+    net += efeito;
+    return `<tr>
+      <td>${rotulosRelatorio[t] || t}</td>
+      <td class="mono" style="text-align:right;">${g.qtd}</td>
+      <td class="mono" style="text-align:right;">${fmt(g.total / g.qtd)}</td>
+      <td class="mono" style="text-align:right;">${fmt(g.maior)}</td>
+      <td class="mono ${efeito < 0 ? 'valor-neg' : 'valor-pos'}" style="text-align:right;">${efeito < 0 ? '-' : '+'} ${fmt(Math.abs(efeito))}</td>
+    </tr>`;
   }).join('');
+  el.innerHTML = `
+    <div style="max-height:360px; overflow:auto;"><table class="ledger">
+      <thead><tr><th>Tipo</th><th style="text-align:right;">Qtd</th><th style="text-align:right;">Média</th><th style="text-align:right;">Maior</th><th style="text-align:right;">Efeito no saldo</th></tr></thead>
+      <tbody>${linhasTab}</tbody>
+      <tfoot><tr><td colspan="4" style="font-weight:700;">Variação líquida no período</td>
+        <td class="mono ${net < 0 ? 'valor-neg' : 'valor-pos'}" style="text-align:right; font-weight:700;">${net < 0 ? '-' : '+'} ${fmt(Math.abs(net))}</td></tr></tfoot>
+    </table></div>
+    <p style="font-size:11.5px; color:var(--ink-soft); margin:8px 0 0;">PIX entre alunos da escola toda se anulam; ao filtrar uma turma eles mostram a entrada/saída da turma. Taxas reduzem e bônus aumentam o saldo.</p>`;
+}
+
+function renderPorTurma(linhas, contas){
+  contas = contas || [];
+  const turmas = {};
+  const get = (n) => turmas[n] = turmas[n] || { mov: 0, cred: 0, deb: 0, juros: 0, taxas: 0, bonus: 0, saldo: 0, alunos: 0, maior: 0 };
+  linhas.forEach(l => {
+    const g = get(l.turma_nome); const v = Math.abs(Number(l.valor));
+    g.mov += 1;
+    if (calcularSinalClasse(l.tipo, l.valor).sinal === '+') g.cred += v; else g.deb += v;
+    if (l.tipo === 'rendimento_automatico' || l.tipo === 'rendimento_manual') g.juros += Number(l.valor);
+    if (l.tipo === 'taxa_debito') g.taxas += v;
+    if (l.tipo === 'taxa_bonus') g.bonus += v;
+  });
+  contas.forEach(c => { const g = get(c.turma); g.saldo += c.saldo; g.alunos += 1; if (c.saldo > g.maior) g.maior = c.saldo; });
+
+  const lista = Object.entries(turmas).sort((a, b) => b[1].saldo - a[1].saldo || b[1].mov - a[1].mov);
+  const cont = $('rel-por-turma');
+  if (!lista.length) { cont.innerHTML = '<p style="color:var(--ink-soft); font-size:13px;">Sem dados no período.</p>'; return; }
+  const maiorSaldo = Math.max(...lista.map(([, g]) => g.saldo), 0.01);
+  cont.innerHTML = `<div style="overflow-x:auto;"><table class="ledger">
+    <thead><tr><th>Turma</th><th style="text-align:right;">Alunos</th><th style="text-align:right;">Movs</th><th style="text-align:right;">Créditos</th><th style="text-align:right;">Débitos</th>
+      <th style="text-align:right;">Juros líq.</th><th style="text-align:right;">Taxas</th><th style="text-align:right;">Bônus</th><th style="text-align:right;">Saldo hoje</th><th style="text-align:right;">Média</th></tr></thead>
+    <tbody>${lista.map(([nome, g]) => `<tr>
+      <td><strong>${nome}</strong><div style="background:rgba(var(--border-rgb),0.1); border-radius:6px; height:6px; margin-top:4px; min-width:60px;"><div style="width:${Math.round(g.saldo / maiorSaldo * 100)}%; height:100%; background:var(--green); border-radius:6px;"></div></div></td>
+      <td class="mono" style="text-align:right;">${g.alunos}</td>
+      <td class="mono" style="text-align:right;">${g.mov}</td>
+      <td class="mono valor-pos" style="text-align:right;">${fmt(g.cred)}</td>
+      <td class="mono valor-neg" style="text-align:right;">${fmt(g.deb)}</td>
+      <td class="mono ${g.juros < 0 ? 'valor-neg' : 'valor-pos'}" style="text-align:right;">${fmt(g.juros)}</td>
+      <td class="mono valor-neg" style="text-align:right;">${fmt(g.taxas)}</td>
+      <td class="mono valor-pos" style="text-align:right;">${fmt(g.bonus)}</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${fmt(g.saldo)}</td>
+      <td class="mono" style="text-align:right;">${g.alunos ? fmt(g.saldo / g.alunos) : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
 $('btn-exportar-csv').addEventListener('click', () => {
