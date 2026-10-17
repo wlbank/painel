@@ -13,126 +13,139 @@
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-950:#fff8f0; --bg-900:#ffffff; --bg-800:#fff1e0;
-    --paper:#2b2260; --sun:#ffb100; --sun-2:#ff9500;
-    --coral:#ff5c7a; --mint:#00b88f; --violet:#8b5cf6; --pink:#ec4899;
-    --ink-soft:#6b5f99; --green:#16a34a; --red:#e11d48;
-    --radius:16px; --border-rgb: 43,34,96; --btn-ink:#211a49;
-    --shadow: 0 8px 24px rgba(24,18,51,0.14);
-    --gradiente-alegre: linear-gradient(135deg, var(--sun), var(--coral));
+    --bg:#8AD8F2; --bg-dots:rgba(255,255,255,.55);
+    --card:#FFFFFF; --card-2:#FFF4CF;
+    --text:#2A1A5E; --soft:#5E4F96; --line:#2A1A5E;
+    --banana:#FFD23F; --tomato:#FF5A4F; --mint:#27D9A0; --bubble:#FF8FCB; --grape:#6C4DFF; --sky:#57C7EC;
+    --green-ink:#0B7A57; --red-ink:#B5251B;
+    --ink-soft:#5E4F96; --paper:#2A1A5E; --green:#0B7A57; --red:#B5251B; --border-rgb:42,26,94;
+    --pop: 0 5px 0 var(--line); --on-bg:#2A1A5E;
   }
   [data-theme="dark"]{
-    --bg-950:#181233; --bg-900:#211a49; --bg-800:#2b2260;
-    --paper:#faf7ff; --sun:#ffcf4d; --sun-2:#ffd873;
-    --coral:#ff7a90; --mint:#2dd4bf; --violet:#a78bfa; --pink:#f472b6;
-    --ink-soft:#b6adda; --green:#34d399; --red:#fb7185;
-    --border-rgb: 250,247,255;
-    --shadow: 0 8px 30px rgba(0,0,0,0.45);
+    --bg:#2B1B76; --bg-dots:rgba(255,255,255,.07);
+    --card:#3B2A96; --card-2:#4A36B0; --text:#FFF8E7; --soft:#CFC4FF; --line:#120A38;
+    --green-ink:#5CF0BE; --red-ink:#FF8E86;
+    --ink-soft:#CFC4FF; --paper:#FFF8E7; --green:#5CF0BE; --red:#FF8E86; --border-rgb:255,248,231; --on-bg:#FFF8E7;
   }
-  *{box-sizing:border-box;}
-  html,body{ margin:0; min-height:100vh; background: var(--bg-950); color: var(--paper); font-family:'Nunito',sans-serif; }
-  .mono{ font-family:'IBM Plex Mono',monospace; }
-  .brand{ font-family:'Baloo 2',sans-serif; font-weight:700; }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; min-height:100vh; color:var(--text);
+    font-family:'Nunito',system-ui,sans-serif; font-weight:700;
+    background-color:var(--bg);
+    background-image:radial-gradient(var(--bg-dots) 3px, transparent 3.5px);
+    background-size:34px 34px;
+  }
+  .mono{ font-variant-numeric:tabular-nums; }
+  .brand{ font-family:'Lilita One','Nunito',sans-serif; font-weight:400; letter-spacing:.01em; }
   .hidden{ display:none !important; }
 
-  #app{ min-height:100vh; display:flex; flex-direction:column; }
-  header.topbar{
-    display:flex; align-items:center; justify-content:space-between; padding:18px 24px;
-    background: linear-gradient(180deg, var(--bg-900), var(--bg-950));
-    border-bottom: 3px solid transparent;
-    border-image: linear-gradient(90deg, var(--sun), var(--coral), var(--violet), var(--mint)) 1;
-  }
-  .wordmark{ display:flex; align-items:center; gap:12px; }
-  .seal{
-    width:36px; height:36px; border-radius:50%;
-    background: var(--gradiente-alegre);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Baloo 2',sans-serif; font-weight:700; color:#fff; font-size:14px;
-  }
-  .wordmark h1{ font-size:18px; margin:0; }
-  .wordmark small{ display:block; color:var(--ink-soft); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; }
+  #app{ min-height:100vh; display:flex; flex-direction:column; max-width:480px; margin:0 auto; width:100%; }
 
-  button{
-    font-family:'Nunito',sans-serif; font-size:14px; font-weight:600;
-    border:none; border-radius:7px; padding:10px 16px; cursor:pointer;
+  /* barra superior: logo + tema */
+  header.topbar{ display:flex; align-items:center; justify-content:space-between; padding:16px 16px 6px; }
+  .wordmark{ display:flex; align-items:center; gap:10px; }
+  .moeda{
+    width:42px; height:42px; border-radius:50%; flex:none;
+    background:radial-gradient(circle at 35% 30%, #FFF0A6 0 18%, var(--banana) 19% 100%);
+    border:3px solid var(--line); box-shadow:0 3px 0 var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Lilita One',sans-serif; font-size:17px; color:var(--line);
   }
-  .btn-gold{ background: var(--gradiente-alegre); color: #fff; width:100%; box-shadow: 0 3px 10px rgba(255,92,122,0.3); }
-  .btn-gold:hover{ box-shadow: 0 5px 14px rgba(255,92,122,0.45); }
-  .btn-ghost{ background: transparent; color: var(--paper); border:1px solid rgba(var(--border-rgb),0.25); padding:7px 12px; font-size:12.5px; }
-  .btn-ghost:hover{ border-color: var(--sun); color: var(--sun-2); }
+  .wordmark h1{ margin:0; font-size:26px; line-height:1; color:#fff; -webkit-text-stroke:0; text-shadow:0 3px 0 var(--line), 2px 0 0 var(--line), -2px 0 0 var(--line), 0 -2px 0 var(--line); }
+  .wordmark small{ display:none; }
+  select{
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:13px; color:var(--text);
+    background:var(--card); border:3px solid var(--line); border-radius:999px; padding:6px 10px; box-shadow:0 3px 0 var(--line);
+  }
+
+  /* botões de brinquedo: afundam ao apertar */
+  button{ font-family:'Nunito',sans-serif; font-weight:800; font-size:16px; cursor:pointer; color:var(--line); border:3px solid var(--line); border-radius:16px; padding:12px 18px; transition:transform .08s, box-shadow .08s; }
+  .btn-gold{ width:100%; background:var(--banana); box-shadow:var(--pop); font-size:19px; font-family:'Lilita One',sans-serif; font-weight:400; letter-spacing:.02em; padding:14px 18px; }
+  .btn-ghost{ background:var(--card); color:var(--text); box-shadow:0 4px 0 var(--line); padding:7px 14px; font-size:14px; border-radius:999px; }
+  button:active{ transform:translateY(4px); box-shadow:0 1px 0 var(--line); }
+  button:focus-visible, input:focus-visible, select:focus-visible, [data-grupo-toggle]:focus-visible{ outline:4px solid var(--grape); outline-offset:3px; }
 
   input{
-    font-family:'Nunito',sans-serif; font-size:15px; background: var(--bg-800); color: var(--paper);
-    border:1px solid rgba(var(--border-rgb),0.18); border-radius:7px; padding:10px 12px; width:100%;
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:18px; width:100%;
+    background:var(--card-2); color:var(--text); border:3px solid var(--line); border-radius:14px; padding:12px 14px;
+    box-shadow:inset 0 3px 0 rgba(0,0,0,.08);
   }
-  input:focus{ outline: 2px solid var(--sun); outline-offset:1px; border-color: var(--sun); }
-  label{ font-size:12px; color: var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:5px; }
-  .field{ margin-bottom:16px; }
+  input::placeholder{ color:var(--soft); opacity:.6; font-weight:600; }
+  label{ display:block; font-size:14px; font-weight:800; margin:0 0 6px 2px; color:var(--text); }
+  .field{ margin-bottom:14px; }
+  .linha-campos{ display:grid; grid-template-columns:1fr 96px; gap:12px; }
 
-  #tela-login{ flex:1; display:flex; align-items:center; justify-content:center; padding:20px; }
-  .login-card{
-    background: var(--bg-900); border:1px solid rgba(255,201,77,0.3); border-radius: var(--radius);
-    box-shadow: var(--shadow); padding:36px 30px; width:100%; max-width:360px;
-  }
-  .login-card .seal{ margin:0 auto 16px; width:52px; height:52px; font-size:18px; }
-  .login-card h1{ text-align:center; margin:0 0 4px; font-size:22px; }
-  .login-card p.sub{ text-align:center; color:var(--ink-soft); font-size:13px; margin:0 0 24px; }
-  #erro-login{ color: var(--red); font-size:13px; margin-top:10px; min-height:16px; }
+  /* tela inicial */
+  #tela-login{ flex:1; padding:10px 16px 28px; }
+  .login-card{ background:var(--card); border:3px solid var(--line); border-radius:28px; box-shadow:0 8px 0 var(--line); padding:26px 22px 22px; }
+  .login-card .moeda{ width:84px; height:84px; font-size:34px; margin:-62px auto 10px; box-shadow:0 5px 0 var(--line); animation:moeda-gira 1.1s cubic-bezier(.3,1.4,.5,1) both; }
+  .login-card h1{ text-align:center; margin:0 0 4px; font-size:34px; line-height:1.05; }
+  .login-card p.sub{ text-align:center; color:var(--soft); font-size:15px; margin:0 0 18px; font-weight:700; }
+  .aviso{ background:var(--card-2); border:3px dashed var(--line); border-radius:16px; padding:10px 12px; margin-bottom:18px; font-size:13.5px; line-height:1.45; }
+  #erro-login{ color:var(--red-ink); font-size:14px; font-weight:800; margin-top:12px; min-height:18px; text-align:center; }
+  #tela-login{ padding-top:70px; }
 
-  main.conteudo{ flex:1; padding:24px 20px; max-width:640px; margin:0 auto; width:100%; }
+  /* tela da conta */
+  main.conteudo{ flex:1; padding:8px 16px 40px; width:100%; }
+  .perfil{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:6px 0 16px; }
+  .perfil .quem{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .avatar{ flex:none; width:46px; height:46px; border-radius:50%; background:var(--bubble); border:3px solid var(--line); box-shadow:0 3px 0 var(--line); display:flex; align-items:center; justify-content:center; font-size:24px; }
+  #info-aluno{ font-size:14px; font-weight:800; line-height:1.25; color:var(--on-bg); overflow-wrap:anywhere; }
 
-  .cartao-saldo{
-    background: linear-gradient(135deg, var(--sun), var(--coral) 55%, var(--violet));
-    border:none; border-radius: var(--radius);
-    padding:24px; margin-bottom:20px; text-align:center;
-    box-shadow: 0 8px 20px rgba(255,92,122,0.3);
-  }
-  .cartao-saldo .rotulo{ font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.85); }
-  .cartao-saldo .valor{ font-family:'IBM Plex Mono',monospace; font-size:36px; font-weight:600; color:#fff; margin:6px 0; text-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-  .cartao-saldo .taxa{ font-size:13px; color:#fff; }
+  .cofre{ position:relative; background:var(--banana); border:3px solid var(--line); border-radius:28px; box-shadow:0 8px 0 var(--line); padding:20px 18px 18px; margin-bottom:22px; text-align:center; color:#2A1A5E; }
+  .cofre .rotulo{ font-size:15px; font-weight:800; }
+  .cofre .linha-saldo{ display:flex; align-items:center; justify-content:center; gap:12px; margin:4px 0 12px; }
+  .cofre .moeda{ width:58px; height:58px; font-size:22px; animation:moeda-cai .9s cubic-bezier(.3,1.5,.5,1) both; }
+  .cofre .valor{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:clamp(36px, 12vw, 52px); line-height:1; }
+  .nivel{ display:flex; align-items:center; gap:10px; }
+  .nivel .selo{ flex:none; background:var(--grape); color:#fff; font-family:'Lilita One',sans-serif; font-size:16px; border:3px solid var(--line); border-radius:999px; padding:3px 12px; box-shadow:0 3px 0 var(--line); }
+  .barra{ flex:1; height:22px; background:#fff; border:3px solid var(--line); border-radius:999px; overflow:hidden; }
+  .barra > i{ display:block; height:100%; width:0; background:repeating-linear-gradient(-45deg, var(--mint) 0 10px, #5CEBBE 10px 20px); border-right:3px solid var(--line); border-radius:999px; transition:width 1s cubic-bezier(.3,1.2,.5,1) .25s; }
+  .cofre .meta{ font-size:13.5px; margin-top:8px; font-weight:800; }
+  .cofre .taxa{ display:inline-block; margin-top:12px; background:#fff; border:3px solid var(--line); border-radius:999px; padding:5px 14px; font-size:14px; font-weight:800; box-shadow:0 3px 0 var(--line); }
 
-  .cartao{
-    background: var(--bg-900); border:1px solid rgba(255,201,77,0.18);
-    border-top: 4px solid var(--mint);
-    border-radius: var(--radius);
-    padding:18px 20px; margin-bottom:18px;
-  }
-  .cartao h3{ font-family:'Baloo 2',sans-serif; font-size:15px; margin:0 0 12px; color: var(--sun-2); }
+  .balao{ display:flex; gap:10px; align-items:flex-start; margin-bottom:22px; }
+  .balao .avatar{ background:var(--mint); }
+  .balao .fala{ position:relative; background:var(--card); border:3px solid var(--line); border-radius:20px; padding:11px 14px; font-size:14px; line-height:1.45; font-weight:700; box-shadow:0 4px 0 var(--line); }
+  .balao .fala::before{ content:''; position:absolute; left:-12px; top:16px; width:16px; height:16px; background:var(--card); border-left:3px solid var(--line); border-bottom:3px solid var(--line); transform:rotate(45deg); }
 
-  .tag-pacote{
-    display:inline-block; background:rgba(255,201,77,0.14); color:var(--sun-2);
-    border-radius:6px; padding:6px 10px; font-size:12.5px; margin:0 6px 6px 0;
-  }
+  .secao{ margin-bottom:24px; }
+  .secao h3{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:24px; margin:0 0 12px 4px; color:#fff; text-shadow:0 3px 0 var(--line), 2px 0 0 var(--line), -2px 0 0 var(--line), 0 -2px 0 var(--line); }
+  .painel{ background:var(--card); border:3px solid var(--line); border-radius:24px; box-shadow:0 6px 0 var(--line); padding:8px 14px; }
+  .painel.solto{ background:transparent; border:none; box-shadow:none; padding:0; }
 
-  .recibo-linha{ display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(var(--border-rgb),0.06); font-size:13.5px; }
+  .tag-pacote{ display:inline-block; border:3px solid var(--line); border-radius:18px; padding:9px 14px; font-size:14px; font-weight:800; margin:0 8px 12px 0; box-shadow:0 4px 0 var(--line); background:var(--bubble); color:#2A1A5E; line-height:1.3; }
+  .tag-pacote:nth-child(3n+2){ background:var(--mint); transform:rotate(-1.2deg); }
+  .tag-pacote:nth-child(3n+3){ background:#B8A8FF; transform:rotate(1.2deg); }
+  .tag-pacote small{ display:block; font-size:12px; font-weight:700; opacity:.85; }
+
+  /* extrato */
+  .recibo-linha{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:3px dotted rgba(var(--border-rgb),.22); }
   .recibo-linha:last-child{ border-bottom:none; }
-  .recibo-linha .quando{ color:var(--ink-soft); font-size:11px; }
-  .valor-pos{ color: var(--green); }
-  .valor-neg{ color: var(--red); }
+  .recibo-linha .ico{ flex:none; width:42px; height:42px; border-radius:50%; border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; background:var(--card-2); }
+  .recibo-linha.pos .ico{ background:var(--mint); } .recibo-linha.neg .ico{ background:var(--tomato); } .recibo-linha.juros .ico{ background:var(--banana); }
+  .recibo-linha .txt{ flex:1; min-width:0; }
+  .recibo-linha .tit{ font-size:15px; font-weight:800; }
+  .recibo-linha .quando{ color:var(--soft); font-size:12px; font-weight:700; overflow-wrap:anywhere; }
+  .valor-pos{ color:var(--green-ink); } .valor-neg{ color:var(--red-ink); }
+  .recibo-linha .quanto{ flex:none; font-size:15px; font-weight:900; white-space:nowrap; }
+  .grupo{ background:var(--card-2); border:3px solid var(--line); border-radius:18px; padding:10px 12px; margin:10px 0 14px; cursor:pointer; box-shadow:0 4px 0 var(--line), 0 8px 0 -2px var(--card), 0 8px 0 var(--line); border-bottom:3px solid var(--line); }
+  .grupo .ico{ background:var(--banana); }
+  .grupo .x{ display:inline-block; background:var(--grape); color:#fff; border:2px solid var(--line); border-radius:999px; padding:0 9px; font-size:13px; margin-left:6px; }
+  .detalhe-grupo{ margin:-4px 0 14px 16px; padding-left:10px; border-left:4px solid var(--line); }
+  .detalhe-grupo .recibo-linha{ padding:8px 0; }
+  .detalhe-grupo .ico{ width:34px; height:34px; font-size:16px; }
+  .vazio{ text-align:center; padding:22px 8px; font-size:15px; color:var(--soft); }
 
-  .rodape-usuario{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-  .toast{
-    position:fixed; bottom:24px; right:24px; left:24px; max-width:360px; margin:0 auto;
-    background: var(--bg-800); border:1px solid var(--sun); color: var(--paper); padding:12px 18px;
-    border-radius:8px; font-size:13.5px; box-shadow: var(--shadow); z-index:100;
-  }
-  .toast.erro{ border-color: var(--red); }
-  .rodape-usuario .info{ font-size:13px; color:var(--ink-soft); }
+  .toast{ position:fixed; bottom:24px; left:16px; right:16px; max-width:420px; margin:0 auto; background:var(--mint); color:#2A1A5E; border:3px solid var(--line); border-radius:18px; padding:12px 16px; font-size:15px; font-weight:800; box-shadow:0 5px 0 var(--line); z-index:100; }
+  .toast.erro{ background:var(--tomato); }
 
-  /* ---- Visual jovem e alegre ---- */
-  @keyframes pop-in{ from{ opacity:0; transform:translateY(10px) scale(.97);} to{ opacity:1; transform:none;} }
-  @keyframes flutuar{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
-  .cartao, .cartao-saldo{ animation:pop-in .45s ease both; }
-  .cartao{ transition:transform .2s, box-shadow .2s; }
-  .cartao:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(124,58,237,.15); }
-  button{ transition:transform .15s; }
-  button:hover{ transform:scale(1.04); }
-  .emoji-flutua{ display:inline-block; animation:flutuar 2.6s ease-in-out infinite; }
-  .recibo-linha[data-grupo-toggle]:hover{ filter:brightness(1.05); }
-  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+  @keyframes moeda-cai{ 0%{ transform:translateY(-70px) rotateY(0); opacity:0; } 60%{ opacity:1; } 100%{ transform:none; opacity:1; } }
+  @keyframes moeda-gira{ 0%{ transform:rotateY(540deg) scale(.4); opacity:0; } 100%{ transform:none; opacity:1; } }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } .barra > i{ transition:none; } }
 </style>
 </head>
 <body>
@@ -151,14 +164,11 @@
 <div id="app">
   <header class="topbar">
     <div class="wordmark">
-      <div class="seal">WL</div>
-      <div>
-        <h1 class="brand">WL Bank</h1>
-        <small>🐷 Minha conta · Consulta do aluno</small>
-      </div>
+      <div class="moeda" aria-hidden="true">WL</div>
+      <h1 class="brand">WL Bank</h1>
     </div>
-    <select id="seletor-tema" title="Tema" style="width:auto; padding:6px 10px; font-size:12.5px;">
-      <option value="sistema">🖥️ Sistema</option>
+    <select id="seletor-tema" title="Tema" aria-label="Tema">
+      <option value="sistema">🖥️ Auto</option>
       <option value="claro">☀️ Claro</option>
       <option value="escuro">🌙 Escuro</option>
     </select>
@@ -166,64 +176,70 @@
 
   <div id="tela-login">
     <div class="login-card">
-      <div class="seal">WL</div>
-      <h1 class="brand">Minha conta 💰</h1>
-      <p class="sub">Digite seu RA, o dígito e sua senha para consultar seu extrato.</p>
-      <div style="background:rgba(45,212,191,0.1); border:1px solid rgba(45,212,191,0.3); border-radius:10px; padding:12px 14px; margin-bottom:20px; font-size:12.5px; line-height:1.5;">
-        🎓 O WL Bank é uma moeda simbólica da sua escola — um jeito divertido
-        de aprender a cuidar do dinheiro, ganhar juros e evoluir. Continue
-        assim!
-      </div>
+      <div class="moeda" aria-hidden="true">WL</div>
+      <h1 class="brand">Abra seu cofrinho</h1>
+      <p class="sub">Entre com seu RA, o dígito e a senha.</p>
+      <div class="aviso">🎓 Projeto pedagógico da escola: o WL é uma moeda simbólica para aprender, brincando, a cuidar do dinheiro.</div>
       <form id="form-login">
-        <div class="field">
-          <label>RA <span style="font-weight:400; opacity:.7;">(não precisa dos zeros do início)</span></label>
-          <input type="text" id="login-ra" required autocomplete="username" inputmode="numeric">
+        <div class="linha-campos">
+          <div class="field">
+            <label for="login-ra">RA <span style="font-weight:700; opacity:.7;">(sem os zeros do início)</span></label>
+            <input type="text" id="login-ra" required autocomplete="username" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="login-digito">Dígito</label>
+            <input type="text" id="login-digito" maxlength="3" autocomplete="off" placeholder="7">
+          </div>
         </div>
         <div class="field">
-          <label>Dígito do RA</label>
-          <input type="text" id="login-digito" maxlength="3" autocomplete="off" placeholder="Ex: 7 ou X">
-        </div>
-        <div class="field">
-          <label>Senha</label>
+          <label for="login-senha">Senha</label>
           <input type="password" id="login-senha" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn-gold">Entrar</button>
-        <div id="erro-login"></div>
+        <div id="erro-login" role="alert"></div>
       </form>
-      <p style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:18px;">
-        Esqueceu a senha? Peça ao professor para redefinir.
-      </p>
-      <p style="font-size:11.5px; color:var(--ink-soft); text-align:center; margin-top:10px;">
-        <a href="painel-professor.html" style="color:var(--ink-soft);">Sou professor</a>
-      </p>
+      <p style="font-size:13px; color:var(--soft); text-align:center; margin:14px 0 0;">Esqueceu a senha? Peça ao professor para redefinir.</p>
+      <p style="font-size:12.5px; text-align:center; margin:8px 0 0;"><a href="painel-professor.html" style="color:var(--soft);">Sou professor</a></p>
     </div>
   </div>
 
   <main class="conteudo hidden" id="tela-conta">
-    <div class="rodape-usuario">
-      <div class="info" id="info-aluno"></div>
+    <div class="perfil">
+      <div class="quem">
+        <div class="avatar" aria-hidden="true">🧑‍🎓</div>
+        <div id="info-aluno"></div>
+      </div>
       <button class="btn-ghost" id="btn-sair">Sair</button>
     </div>
 
-    <div class="cartao-saldo">
-      <div class="rotulo"><span class="emoji-flutua">🐷</span> Meu saldo</div>
-      <div class="valor mono" id="valor-saldo">R$ 0,00</div>
+    <section class="cofre" aria-label="Meu saldo">
+      <div class="rotulo">Meu cofrinho</div>
+      <div class="linha-saldo">
+        <div class="moeda" aria-hidden="true">WL</div>
+        <div class="valor mono" id="valor-saldo">WL 0,00</div>
+      </div>
+      <div class="nivel">
+        <span class="selo" id="nivel-selo">Nível 1</span>
+        <div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="nivel-barra-wrap"><i id="nivel-barra"></i></div>
+      </div>
+      <div class="meta" id="nivel-meta"></div>
       <div class="taxa" id="valor-taxa"></div>
+    </section>
+
+    <div class="balao">
+      <div class="avatar" aria-hidden="true">🐷</div>
+      <div class="fala" id="cartao-dica-dia">Cada bom hábito conta! Continue cuidando do seu WL.</div>
     </div>
 
-    <div style="background:rgba(13,148,136,0.08); border:1px solid rgba(13,148,136,0.25); border-radius:12px; padding:12px 14px; margin-bottom:18px; font-size:12.5px; line-height:1.5;" id="cartao-dica-dia">
-      🌟 Cada bom hábito conta! Continue economizando e cuidando do seu WL — é assim que ele cresce com juros.
-    </div>
+    <section class="secao">
+      <h3>⚡ Meus planos de juros</h3>
+      <div class="painel solto" id="lista-pacotes">—</div>
+    </section>
 
-    <div class="cartao">
-      <h3>🚀 Planos de juros pedagógicos ativos</h3>
-      <div id="lista-pacotes">—</div>
-    </div>
-
-    <div class="cartao">
-      <h3>📜 Extrato de movimentações</h3>
-      <div id="lista-extrato">—</div>
-    </div>
+    <section class="secao">
+      <h3>📜 Meu extrato</h3>
+      <div class="painel" id="lista-extrato">—</div>
+    </section>
   </main>
 </div>
 
@@ -303,6 +319,7 @@ $('btn-sair').addEventListener('click', () => {
   sessionStorage.removeItem('bancowl_ra');
   sessionStorage.removeItem('bancowl_senha');
   sessionStorage.removeItem('bancowl_digito');
+  _saldoAnimado = null;
   $('tela-conta').classList.add('hidden');
   $('tela-login').classList.remove('hidden');
   $('login-ra').value = '';
@@ -310,22 +327,64 @@ $('btn-sair').addEventListener('click', () => {
   $('login-senha').value = '';
 });
 
+// Nível: a cada WL 50 guardados sobe um nível (brincadeira visual, não vale nota)
+const WL_POR_NIVEL = 50;
+function atualizarNivel(saldo){
+  const nivel = Math.floor(saldo / WL_POR_NIVEL) + 1;
+  const resto = saldo % WL_POR_NIVEL;
+  const pct = Math.round((resto / WL_POR_NIVEL) * 100);
+  $('nivel-selo').textContent = 'Nível ' + nivel;
+  $('nivel-meta').textContent = `Faltam ${fmt(WL_POR_NIVEL - resto)} para o nível ${nivel + 1}`;
+  $('nivel-barra-wrap').setAttribute('aria-valuenow', pct);
+  $('nivel-barra').style.width = '0%';
+  requestAnimationFrame(() => requestAnimationFrame(() => { $('nivel-barra').style.width = Math.max(pct, 4) + '%'; }));
+}
+let _saldoAnimado = null;
+function animarSaldo(alvo){
+  const el = $('valor-saldo');
+  const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduzido || _saldoAnimado !== null) { el.textContent = fmt(alvo); _saldoAnimado = alvo; return; }
+  _saldoAnimado = alvo;
+  const t0 = performance.now(), dur = 900;
+  const passo = (t) => {
+    const k = Math.min((t - t0) / dur, 1);
+    el.textContent = fmt(alvo * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
+
+// Tema (claro / escuro / automático)
+$('seletor-tema').value = localStorage.getItem('wlbank-tema') || 'sistema';
+$('seletor-tema').addEventListener('change', (e) => {
+  const v = e.target.value;
+  try { localStorage.setItem('wlbank-tema', v); } catch (_) {}
+  const escuro = v === 'escuro' || (v === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+});
+
 function renderDados(data){
   $('tela-login').classList.add('hidden');
   $('tela-conta').classList.remove('hidden');
 
   $('info-aluno').textContent = `${data.aluno.nome} · ${data.turma}${data.aluno.numero ? ' · Nº ' + data.aluno.numero : ''}`;
-  $('valor-saldo').textContent = fmt(data.saldo);
-  $('valor-taxa').textContent = `📈 Juros pedagógico atual: ${Number(data.taxa_mensal_total).toFixed(2)}%/mês (${Number(data.taxa_diaria_total).toFixed(3)}%/dia)`;
+  animarSaldo(Number(data.saldo));
+  atualizarNivel(Number(data.saldo));
+  $('valor-taxa').textContent = `⚡ Juros: ${Number(data.taxa_mensal_total).toFixed(2)}% ao mês`;
 
   const pacotesEl = $('lista-pacotes');
   pacotesEl.innerHTML = data.pacotes_ativos.length
-    ? data.pacotes_ativos.map(p => `<span class="tag-pacote">${p.nome} (+${p.taxa_mensal}%/mês${p.data_fim ? ', até ' + new Date(p.data_fim).toLocaleDateString('pt-BR') : ''})<br><span style="font-size:10.5px; opacity:0.85;">rendendo desde ${new Date(p.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}</span></span>`).join('')
-    : '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhum pacote ativo no momento.</p>';
+    ? data.pacotes_ativos.map(p => `<span class="tag-pacote">${p.nome} · +${p.taxa_mensal}% ao mês<small>rendendo desde ${new Date(p.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}${p.data_fim ? ' · até ' + new Date(p.data_fim).toLocaleDateString('pt-BR') : ''}</small></span>`).join('')
+    : '<div class="painel vazio">Nenhum plano ativo no momento.</div>';
 
   renderExtratoAgrupado(data.extrato || []);
 }
 
+function partirRotulo(chave){
+  const r = rotulosTipo[chave] || chave;
+  const i = r.indexOf(' ');
+  return (i > 0 && !/^[A-Za-zÀ-ú]/.test(r)) ? [r.slice(0, i), r.slice(i + 1)] : ['🪙', r];
+}
 function linhaExtratoAluno(t, dentroDeGrupo){
   const { sinal, classe } = calcularSinalClasse(t.tipo, t.valor);
   const quando = new Date(t.criado_em).toLocaleString('pt-BR');
@@ -334,14 +393,15 @@ function linhaExtratoAluno(t, dentroDeGrupo){
     const rotuloContra = t.tipo === 'transferencia_enviada' ? 'Para' : 'De';
     extra += ` · ${rotuloContra}: ${t.contra_aluno_nome}${t.contra_turma_nome ? ' · ' + t.contra_turma_nome : ''}`;
   }
-  const infoIcone = t.pacote_nome
-    ? ` <span title="${(t.pacote_descricao||'').replace(/"/g,'&quot;')}" style="cursor:help;">ℹ️</span>` : '';
-  return `<div class="recibo-linha"${dentroDeGrupo ? ' style="padding-left:22px; opacity:0.92;"' : ''}>
-    <div><div>${rotulosTipo[t.tipo] || t.tipo}${infoIcone}</div><div class="quando">${extra}</div></div>
-    <div class="mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}</div>
+  const [ico, nome] = partirRotulo(t.tipo);
+  const tom = TIPOS_SINAL_PROPRIO.includes(t.tipo) ? 'juros' : (sinal === '+' ? 'pos' : 'neg');
+  const info = t.pacote_nome ? ` <span title="${(t.pacote_descricao||'').replace(/"/g,'&quot;')}" style="cursor:help;">ℹ️</span>` : '';
+  return `<div class="recibo-linha ${tom}">
+    <div class="ico" aria-hidden="true">${ico}</div>
+    <div class="txt"><div class="tit">${nome}${info}</div><div class="quando">${extra}</div></div>
+    <div class="quanto mono ${classe}">${sinal} ${fmt(Math.abs(t.valor))}</div>
   </div>`;
 }
-
 const TIPOS_AGRUPAVEIS = ['rendimento_automatico','taxa_debito','taxa_bonus'];
 function agruparExtrato(linhas){
   const grupos = [];
@@ -356,7 +416,7 @@ function agruparExtrato(linhas){
 
 function renderExtratoAgrupado(linhas){
   const el = $('lista-extrato');
-  if (!linhas.length) { el.innerHTML = '<p style="color:var(--ink-soft); font-size:13.5px;">Nenhuma movimentação ainda. 🌱</p>'; return; }
+  if (!linhas.length) { el.innerHTML = '<div class="vazio">Nada por aqui ainda. Seu primeiro lançamento aparece nesta lista. 🌱</div>'; return; }
   el.innerHTML = agruparExtrato(linhas).map((g, i) => {
     if (g.itens.length < 2) return linhaExtratoAluno(g.itens[0], false);
     const soma = g.itens.reduce((s, t) => {
@@ -365,19 +425,27 @@ function renderExtratoAgrupado(linhas){
     }, 0);
     const t0 = g.itens[0], tN = g.itens[g.itens.length - 1];
     const d = (x) => new Date(x.criado_em).toLocaleDateString('pt-BR');
-    return `<div class="recibo-linha" data-grupo-toggle="${i}" style="cursor:pointer; background:rgba(124,58,237,0.07); border-radius:10px;">
-      <div><div>🔁 ${rotulosTipo[t0.tipo] || t0.tipo} <span style="font-size:12px;">× ${g.itens.length}</span> <span id="seta-${i}">▸</span></div>
-      <div class="quando">${d(tN)} a ${d(t0)} · toque para ver cada lançamento</div></div>
-      <div class="mono ${soma < 0 ? 'valor-neg' : 'valor-pos'}">${soma < 0 ? '-' : '+'} ${fmt(Math.abs(soma))}</div>
+    const [ico, nome] = partirRotulo(t0.tipo);
+    return `<div class="recibo-linha grupo" data-grupo-toggle="${i}" role="button" tabindex="0" aria-expanded="false">
+      <div class="ico" aria-hidden="true">${ico}</div>
+      <div class="txt"><div class="tit">${nome} <span class="x">× ${g.itens.length}</span> <span id="seta-${i}">▸</span></div>
+      <div class="quando">${d(tN)} a ${d(t0)} · toque para abrir</div></div>
+      <div class="quanto mono ${soma < 0 ? 'valor-neg' : 'valor-pos'}">${soma < 0 ? '-' : '+'} ${fmt(Math.abs(soma))}</div>
     </div>
-    <div data-grupo-detalhe="${i}" class="hidden">${g.itens.map(t => linhaExtratoAluno(t, true)).join('')}</div>`;
+    <div data-grupo-detalhe="${i}" class="hidden detalhe-grupo">${g.itens.map(t => linhaExtratoAluno(t, true)).join('')}</div>`;
   }).join('');
-  el.querySelectorAll('[data-grupo-toggle]').forEach(h => h.addEventListener('click', () => {
+  const alternar = (h) => {
     const i = h.dataset.grupoToggle;
     const det = el.querySelector(`[data-grupo-detalhe="${i}"]`);
     det.classList.toggle('hidden');
-    $('seta-' + i).textContent = det.classList.contains('hidden') ? '▸' : '▾';
-  }));
+    const aberto = !det.classList.contains('hidden');
+    h.setAttribute('aria-expanded', aberto);
+    $('seta-' + i).textContent = aberto ? '▾' : '▸';
+  };
+  el.querySelectorAll('[data-grupo-toggle]').forEach(h => {
+    h.addEventListener('click', () => alternar(h));
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(h); } });
+  });
 }
 
 function toast(msg, erro){
