@@ -140,6 +140,54 @@
   .detalhe-grupo .ico{ width:34px; height:34px; font-size:16px; }
   .vazio{ text-align:center; padding:22px 8px; font-size:15px; color:var(--soft); }
 
+
+  /* engajamento: medalhas, semana, gráfico, meta, simulador */
+  :root{ --chart:#6C4DFF; }
+  [data-theme="dark"]{ --chart:#5CF0BE; }
+  .nota{ font-size:12.5px; color:var(--soft); margin:10px 2px 6px; line-height:1.4; font-weight:700; }
+  .med-resumo{ text-align:center; font-size:15px; font-weight:900; margin:8px 0 12px; }
+  .med-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px 8px; }
+  .med-item{ background:none; border:none; box-shadow:none; padding:0; border-radius:14px; display:flex; flex-direction:column; align-items:center; gap:5px; color:var(--text); font-size:11.5px; line-height:1.15; text-align:center; }
+  .med-item:active{ transform:none; box-shadow:none; }
+  .med{ position:relative; width:100%; max-width:64px; aspect-ratio:1; border:3px solid var(--line); border-radius:50%; box-shadow:0 4px 0 var(--line); font-size:28px; display:flex; align-items:center; justify-content:center; background:var(--banana); transition:transform .1s; }
+  .med-item:active .med{ transform:translateY(3px); box-shadow:0 1px 0 var(--line); }
+  .med.c1{ background:var(--mint); } .med.c2{ background:var(--bubble); } .med.c3{ background:var(--sky); } .med.c4{ background:#B8A8FF; }
+  .med-item.bloq .med{ background:var(--card-2); filter:grayscale(1); opacity:.5; box-shadow:0 3px 0 var(--line); }
+  .med-item.bloq .med::after{ content:'🔒'; position:absolute; right:-6px; bottom:-6px; font-size:15px; filter:none; }
+  .med-item.bloq .med-nome{ opacity:.65; }
+  .med-item.sel .med{ outline:4px solid var(--grape); outline-offset:3px; }
+  .med-item.nova .med{ animation:med-pop .9s cubic-bezier(.3,1.6,.5,1) both; }
+  .med-nome{ font-weight:800; }
+  .med-detalhe{ margin-top:14px; background:var(--card-2); border:3px dashed var(--line); border-radius:16px; padding:10px 12px; font-size:14px; line-height:1.4; text-align:center; }
+  @keyframes med-pop{ 0%{ transform:scale(.2) rotate(-25deg); } 70%{ transform:scale(1.2) rotate(6deg); } 100%{ transform:none; } }
+
+  .semana-msg{ font-size:15px; font-weight:900; line-height:1.35; margin:6px 0 12px; text-align:center; }
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px; }
+  .tile{ background:var(--card-2); border:3px solid var(--line); border-radius:16px; padding:9px 11px; box-shadow:0 3px 0 var(--line); }
+  .tile .t{ font-size:12px; font-weight:800; color:var(--soft); }
+  .tile .v{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:20px; margin-top:2px; }
+
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 10px; }
+  .chip{ background:var(--card); color:var(--text); border:3px solid var(--line); border-radius:999px; padding:4px 13px; font-size:13.5px; box-shadow:0 3px 0 var(--line); }
+  .chip[aria-pressed="true"]{ background:var(--grape); color:#fff; }
+  .graf{ width:100%; height:auto; display:block; touch-action:pan-y; }
+  .graf .grade{ stroke:rgba(var(--border-rgb),.22); stroke-width:1; stroke-dasharray:4 4; }
+  .graf text{ fill:var(--soft); font:700 10px 'Nunito',sans-serif; }
+  .graf .linha{ stroke:var(--chart); fill:none; stroke-width:3.5; stroke-linejoin:round; stroke-linecap:round; }
+  .graf .area{ fill:var(--chart); opacity:.18; }
+  .graf .ponto{ fill:var(--banana); stroke:var(--line); stroke-width:3; }
+  .graf-info{ font-size:14px; font-weight:800; text-align:center; min-height:20px; margin-top:4px; }
+
+  .prog{ margin:10px 0 6px; }
+  .prog .barra{ height:20px; }
+  .acoes{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .acoes .btn-ghost{ font-size:13px; padding:6px 12px; }
+  .sim-linha{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
+  .sim-linha input{ font-size:17px; }
+  .sim-res{ margin-top:6px; background:var(--card-2); border:3px solid var(--line); border-radius:18px; padding:12px; text-align:center; box-shadow:0 4px 0 var(--line); }
+  .sim-res .grande{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:28px; }
+  .sim-res .peq{ font-size:13px; color:var(--soft); margin-top:2px; line-height:1.4; }
+
   .toast{ position:fixed; bottom:24px; left:16px; right:16px; max-width:420px; margin:0 auto; background:var(--mint); color:#2A1A5E; border:3px solid var(--line); border-radius:18px; padding:12px 16px; font-size:15px; font-weight:800; box-shadow:0 5px 0 var(--line); z-index:100; }
   .toast.erro{ background:var(--tomato); }
 
@@ -230,6 +278,44 @@
       <div class="avatar" aria-hidden="true">🐷</div>
       <div class="fala" id="cartao-dica-dia">Cada bom hábito conta! Continue cuidando do seu WL.</div>
     </div>
+
+    <section class="secao">
+      <h3>🏅 Minhas medalhas</h3>
+      <div class="painel">
+        <div class="med-resumo" id="med-resumo"></div>
+        <div class="med-grid" id="med-grid"></div>
+        <div class="med-detalhe" id="med-detalhe" aria-live="polite">Toque numa medalha para ver como conquistar.</div>
+        <p class="nota">As medalhas são só diversão e mostram bons hábitos: não valem WL e não entram na nota.</p>
+      </div>
+    </section>
+
+    <section class="secao">
+      <h3>🗓️ Minha semana</h3>
+      <div class="painel" id="resumo-semana">—</div>
+    </section>
+
+    <section class="secao">
+      <h3>📈 Evolução do meu saldo</h3>
+      <div class="painel">
+        <div class="chips" role="group" aria-label="Período do gráfico">
+          <button class="chip" data-graf="7" aria-pressed="false">7 dias</button>
+          <button class="chip" data-graf="30" aria-pressed="true">30 dias</button>
+          <button class="chip" data-graf="0" aria-pressed="false">Tudo</button>
+        </div>
+        <div id="graf-box"></div>
+        <div class="graf-info" id="graf-info" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="secao">
+      <h3>🎯 Minha meta</h3>
+      <div class="painel" id="meta-box">—</div>
+    </section>
+
+    <section class="secao">
+      <h3>🧮 Simulador de juros</h3>
+      <div class="painel" id="sim-box">—</div>
+    </section>
 
     <section class="secao">
       <h3>⚡ Meus planos de juros</h3>
@@ -350,6 +436,290 @@ $('btn-sair').addEventListener('click', () => {
   $('login-senha').value = '';
 });
 
+// ---------------------------------------------------------------- ENGAJAMENTO (medalhas, semana, evolução, meta, simulador)
+// Tudo é calculado aqui na página com os dados que o aluno já recebe (saldo, plano e últimos 100 lançamentos).
+// Nada disso gera WL: medalhas e metas são só motivação visual, guardadas neste aparelho.
+const DIA_MS = 86400000;
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const chaveDia = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const fmtDiaMes = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const fmtSinal = (v) => (v < 0 ? '− ' : '+ ') + fmt(Math.abs(v));
+function lerNumero(txt){
+  let t = String(txt ?? '').trim().replace(/\s/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+let E = null; // contexto do aluno que está na tela
+function chavePerfil(ra){ return 'wlbank-aluno-' + String(ra || '').trim().toLowerCase().replace(/^0+/, ''); }
+function carregarPerfil(ra){
+  const base = { ganhas: {}, dias: [], meta: null, sim: false, existia: false };
+  try {
+    const j = JSON.parse(localStorage.getItem(chavePerfil(ra)) || 'null');
+    if (j && typeof j === 'object') return { ...base, ...j, existia: true };
+  } catch (e) {}
+  return base;
+}
+function salvarPerfil(){
+  if (!E) return;
+  try { const { existia, ...p } = E.perfil; localStorage.setItem(chavePerfil(E.ra), JSON.stringify(p)); } catch (e) {}
+}
+
+const efeito = (t) => (calcularSinalClasse(t.tipo, t.valor).sinal === '-' ? -1 : 1) * Math.abs(Number(t.valor));
+// O período está inteiramente coberto pelos lançamentos que recebemos?
+const cobre = (dias) => E.asc.length > 0 && E.asc[0]._ms <= E.agora - dias * DIA_MS;
+function saldoAte(ms){
+  let s = null;
+  for (const t of E.asc) { if (t._ms <= ms) s = Number(t.saldo_apos); else break; }
+  return s;
+}
+function semTaxa(dias){
+  return cobre(dias) && !E.asc.some(t => t.tipo === 'taxa_debito' && t._ms >= E.agora - dias * DIA_MS);
+}
+
+const MEDALHAS = [
+  { id:'primeiro', ico:'🌱', nome:'Primeiros passos',     dica:'Abrir o seu cofrinho pela primeira vez.', ok:() => true },
+  { id:'dias5',    ico:'📅', nome:'Frequentador',         dica:'Entrar no WL Bank em 5 dias diferentes.', ok:() => E.perfil.dias.length >= 5 },
+  { id:'juros',    ico:'📈', nome:'Dinheiro trabalhando', dica:'Receber seus primeiros juros.', ok:() => E.asc.some(t => TIPOS_SINAL_PROPRIO.includes(t.tipo) && Number(t.valor) > 0) },
+  { id:'juros7',   ico:'🔥', nome:'7 dias rendendo',      dica:'Receber juros em 7 dias diferentes.', ok:() => new Set(E.asc.filter(t => t.tipo === 'rendimento_automatico' && Number(t.valor) > 0).map(t => chaveDia(new Date(t._ms)))).size >= 7 },
+  { id:'bonus',    ico:'⭐', nome:'Estrela',              dica:'Ser reconhecido com um bônus por uma boa atitude.', ok:() => E.asc.some(t => t.tipo === 'taxa_bonus') },
+  { id:'semtaxa7', ico:'🛡️', nome:'Semana limpa',         dica:'Passar 7 dias seguidos sem nenhuma taxa.', ok:() => semTaxa(7) },
+  { id:'semtaxa30',ico:'🧘', nome:'Mês exemplar',         dica:'Passar 30 dias seguidos sem nenhuma taxa.', ok:() => semTaxa(30) },
+  { id:'alta',     ico:'🚀', nome:'Em alta',              dica:'Ter hoje mais WL do que tinha 7 dias atrás.', ok:() => { if (!cobre(7)) return false; const b = saldoAte(E.agora - 7 * DIA_MS); return b !== null && E.saldo > b; } },
+  { id:'s50',      ico:'🐷', nome:'Cofrinho cheio',       dica:'Chegar a ' + fmt(50) + ' guardados.', ok:() => E.saldo >= 50 },
+  { id:'s100',     ico:'🏦', nome:'Poupador',             dica:'Chegar a ' + fmt(100) + ' guardados.', ok:() => E.saldo >= 100 },
+  { id:'s200',     ico:'💎', nome:'Mestre da poupança',   dica:'Chegar a ' + fmt(200) + ' guardados.', ok:() => E.saldo >= 200 },
+  { id:'meta',     ico:'🎯', nome:'Meta batida',          dica:'Definir uma meta em "Minha meta" e alcançá-la.', ok:() => !!(E.perfil.meta && E.saldo >= E.perfil.meta.valor) },
+  { id:'sim',      ico:'🧮', nome:'Planejador',           dica:'Brincar com o simulador de juros.', ok:() => E.perfil.sim }
+];
+
+function renderEngajamento(data){
+  try {
+    const desc = (data.extrato || []).map(t => ({ ...t, _ms: new Date(t.criado_em).getTime() }));
+    const asc = desc.slice().reverse().sort((a, b) => a._ms - b._ms);
+    E = {
+      ra: data.aluno.ra, saldo: Number(data.saldo), asc, truncado: desc.length >= 100,
+      taxaDia: Number(data.taxa_diaria_total) || 0, taxaMes: Number(data.taxa_mensal_total) || 0,
+      perfil: carregarPerfil(data.aluno.ra), agora: Date.now(), graf: 30, simDias: 30
+    };
+    const hoje = chaveDia(new Date());
+    if (!E.perfil.dias.includes(hoje)) E.perfil.dias = E.perfil.dias.concat(hoje).slice(-90);
+    renderMeta();
+    renderMedalhas();
+    renderSemana();
+    desenharGrafico();
+    renderSimulador();
+    salvarPerfil();
+    E.perfil.existia = true; // a partir daqui, medalhas novas ganham aviso
+  } catch (e) { console.warn('engajamento', e); }
+}
+
+// ---- Medalhas
+let _medSel = null;
+function renderMedalhas(){
+  const novas = [];
+  const agoraISO = new Date().toISOString();
+  MEDALHAS.forEach(m => {
+    let ok = false;
+    try { ok = !!m.ok(); } catch (e) {}
+    if (ok && !E.perfil.ganhas[m.id]) { E.perfil.ganhas[m.id] = agoraISO; novas.push(m); }
+  });
+  const ganhou = (id) => !!E.perfil.ganhas[id];
+  const total = MEDALHAS.filter(m => ganhou(m.id)).length;
+  $('med-resumo').textContent = `${total} de ${MEDALHAS.length} medalhas conquistadas`;
+  $('med-grid').innerHTML = MEDALHAS.map((m, i) => `
+    <button type="button" class="med-item ${ganhou(m.id) ? '' : 'bloq'} ${novas.includes(m) && E.perfil.existia ? 'nova' : ''} ${_medSel === m.id ? 'sel' : ''}" data-med="${m.id}" aria-label="${esc(m.nome)}: ${ganhou(m.id) ? 'conquistada' : 'bloqueada'}">
+      <span class="med c${i % 5}" aria-hidden="true">${m.ico}</span>
+      <span class="med-nome">${esc(m.nome)}</span>
+    </button>`).join('');
+  const mostrar = (id) => {
+    const m = MEDALHAS.find(x => x.id === id);
+    _medSel = id;
+    $('med-grid').querySelectorAll('.med-item').forEach(b => b.classList.toggle('sel', b.dataset.med === id));
+    $('med-detalhe').innerHTML = ganhou(id)
+      ? `<b>${m.ico} ${esc(m.nome)}</b> — você já conquistou! 🎉<br><span style="color:var(--soft)">${esc(m.dica)}</span>`
+      : `<b>🔒 ${esc(m.nome)}</b><br>Como conquistar: ${esc(m.dica)}`;
+  };
+  $('med-grid').querySelectorAll('.med-item').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.med)));
+  if (_medSel) mostrar(_medSel);
+  if (novas.length && E.perfil.existia) {
+    toast(novas.length === 1 ? `🏅 Nova medalha: ${novas[0].nome}!` : `🏅 ${novas.length} medalhas novas!`);
+  }
+  salvarPerfil();
+}
+
+// ---- Minha semana
+function renderSemana(){
+  const ini = E.agora - 7 * DIA_MS;
+  const rec = E.asc.filter(t => t._ms >= ini);
+  const parcial = E.truncado && E.asc.length && E.asc[0]._ms > ini;
+  const el = $('resumo-semana');
+  if (!rec.length) { el.innerHTML = '<div class="vazio">Nenhuma movimentação nos últimos 7 dias. 🌱</div>'; return; }
+  const soma = (f) => rec.filter(f).reduce((s, t) => s + efeito(t), 0);
+  const juros  = soma(t => TIPOS_SINAL_PROPRIO.includes(t.tipo));
+  const bonus  = soma(t => t.tipo === 'taxa_bonus');
+  const taxas  = soma(t => t.tipo === 'taxa_debito');
+  const outros = soma(t => !TIPOS_SINAL_PROPRIO.includes(t.tipo) && t.tipo !== 'taxa_bonus' && t.tipo !== 'taxa_debito');
+  const base = saldoAte(ini) ?? (E.truncado ? null : 0);
+  let msg = '';
+  if (base !== null) {
+    const v = Math.round((E.saldo - base) * 100) / 100;
+    msg = v > 0 ? `Seu cofrinho cresceu ${fmt(v)} nos últimos 7 dias! 🎉`
+        : v < 0 ? `Seu cofrinho diminuiu ${fmt(-v)} nos últimos 7 dias. Veja abaixo o que aconteceu. 💪`
+        : 'Seu saldo ficou igual nos últimos 7 dias.';
+  } else msg = 'Veja o que aconteceu no seu cofrinho nos últimos 7 dias.';
+  const extra = (!parcial && taxas === 0) ? '<div class="nota" style="text-align:center;">✅ Nenhuma taxa nesta semana. Continue assim!</div>' : '';
+  const cor = (v) => v < 0 ? 'valor-neg' : (v > 0 ? 'valor-pos' : '');
+  const tile = (ico, tit, v) => `<div class="tile"><div class="t">${ico} ${tit}</div><div class="v mono ${cor(v)}">${v === 0 ? fmt(0) : fmtSinal(v)}</div></div>`;
+  el.innerHTML = `<div class="semana-msg">${msg}</div>
+    <div class="tiles">${tile('📈', 'Juros', juros)}${tile('⭐', 'Bônus', bonus)}${tile('⚠️', 'Taxas', taxas)}${tile('🔁', 'Outros', outros)}</div>
+    ${extra}${parcial ? '<div class="nota" style="text-align:center;">Considerando os seus últimos 100 lançamentos.</div>' : ''}`;
+}
+
+// ---- Evolução do saldo (gráfico em SVG, sem bibliotecas)
+function serieSaldo(dias){
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const primeiro = E.asc.length ? new Date(E.asc[0]._ms) : new Date(hoje);
+  primeiro.setHours(0, 0, 0, 0);
+  let inicio = new Date(hoje);
+  if (dias) inicio.setDate(inicio.getDate() - (dias - 1));
+  if (!dias || inicio < primeiro) inicio = primeiro;
+  const pts = [];
+  for (let d = new Date(inicio); d <= hoje; d.setDate(d.getDate() + 1)) {
+    const fim = new Date(d); fim.setHours(23, 59, 59, 999);
+    let v = saldoAte(fim.getTime());
+    if (v === null) v = 0;
+    pts.push({ d: new Date(d), v });
+  }
+  if (pts.length) pts[pts.length - 1].v = E.saldo;
+  return pts;
+}
+function desenharGrafico(){
+  document.querySelectorAll('[data-graf]').forEach(b => {
+    b.setAttribute('aria-pressed', String(Number(b.dataset.graf) === E.graf));
+    b.onclick = () => { E.graf = Number(b.dataset.graf); desenharGrafico(); };
+  });
+  const box = $('graf-box'), info = $('graf-info');
+  const pts = serieSaldo(E.graf);
+  if (pts.length < 2) {
+    box.innerHTML = '<div class="vazio">O gráfico aparece quando você tiver pelo menos 2 dias de histórico. 🌱</div>';
+    info.textContent = ''; return;
+  }
+  const W = 320, H = 170, pl = 44, pr = 12, pt = 14, pb = 26;
+  let min = Math.min(...pts.map(p => p.v)), max = Math.max(...pts.map(p => p.v));
+  if (max - min < 1) { max += 1; min = Math.max(0, min - 1); }
+  const folga = (max - min) * 0.1; max += folga; min = Math.max(0, min - folga);
+  const x = (i) => pl + i * (W - pl - pr) / (pts.length - 1);
+  const y = (v) => pt + (1 - (v - min) / (max - min)) * (H - pt - pb);
+  const linha = pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ');
+  const area = linha + ` L${x(pts.length - 1).toFixed(1)} ${H - pb} L${x(0).toFixed(1)} ${H - pb} Z`;
+  const rot = (v) => v.toLocaleString('pt-BR', { maximumFractionDigits: v < 10 ? 1 : 0 });
+  const meio = (min + max) / 2;
+  const ini = pts[0], fim = pts[pts.length - 1], dif = Math.round((fim.v - ini.v) * 100) / 100;
+  box.innerHTML = `
+    <svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Seu saldo foi de ${fmt(ini.v)} em ${fmtDiaMes(ini.d)} para ${fmt(fim.v)} hoje">
+      ${[max, meio, min].map(v => `<line class="grade" x1="${pl}" x2="${W - pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text x="${pl - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${rot(v)}</text>`).join('')}
+      <path class="area" d="${area}"/>
+      <path class="linha" d="${linha}"/>
+      <text x="${pl}" y="${H - 8}" text-anchor="start">${fmtDiaMes(ini.d)}</text>
+      <text x="${W - pr}" y="${H - 8}" text-anchor="end">hoje</text>
+      <circle class="ponto" id="graf-ponto" cx="${x(pts.length - 1).toFixed(1)}" cy="${y(fim.v).toFixed(1)}" r="5"/>
+    </svg>`;
+  const resumo = `De ${fmt(ini.v)} (${fmtDiaMes(ini.d)}) para ${fmt(fim.v)} hoje · ${dif === 0 ? 'sem mudança' : fmtSinal(dif)}`;
+  info.textContent = resumo;
+  const svg = box.querySelector('svg'), ponto = $('graf-ponto');
+  const mover = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const xs = (ev.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((xs - pl) / (W - pl - pr) * (pts.length - 1))));
+    ponto.setAttribute('cx', x(i).toFixed(1)); ponto.setAttribute('cy', y(pts[i].v).toFixed(1));
+    info.textContent = `📍 ${pts[i].d.toLocaleDateString('pt-BR')} · ${fmt(pts[i].v)}`;
+  };
+  svg.addEventListener('pointermove', mover);
+  svg.addEventListener('pointerdown', mover);
+  svg.addEventListener('pointerleave', () => { ponto.setAttribute('cx', x(pts.length - 1).toFixed(1)); ponto.setAttribute('cy', y(fim.v).toFixed(1)); info.textContent = resumo; });
+}
+
+// ---- Minha meta
+function renderMeta(){
+  const el = $('meta-box'), m = E.perfil.meta;
+  if (!m) {
+    el.innerHTML = `
+      <p class="nota" style="margin-top:6px;">Escolha um objetivo e acompanhe o quanto falta. A meta fica guardada só neste aparelho.</p>
+      <div class="field"><label for="meta-nome">Meu objetivo (opcional)</label><input type="text" id="meta-nome" maxlength="30" placeholder="Ex.: Viagem da turma"></div>
+      <div class="field"><label for="meta-valor">Quanto quero ter guardado (WL)</label><input type="text" id="meta-valor" inputmode="decimal" placeholder="${Math.ceil((E.saldo + 1) / 10) * 10}"></div>
+      <button class="btn-gold" id="meta-salvar" style="font-size:17px;">Definir meta</button>
+      <div id="meta-erro" role="alert" style="color:var(--red-ink); font-weight:800; font-size:14px; margin-top:8px; min-height:18px;"></div>`;
+    $('meta-salvar').onclick = () => {
+      const v = lerNumero($('meta-valor').value);
+      if (!(v > E.saldo)) { $('meta-erro').textContent = `Escolha um valor maior que o seu saldo de hoje (${fmt(E.saldo)}).`; return; }
+      if (v > 1000000) { $('meta-erro').textContent = 'Esse valor é grande demais. Tente uma meta menor.'; return; }
+      E.perfil.meta = { valor: Math.round(v * 100) / 100, nome: $('meta-nome').value.trim().slice(0, 30), criada: new Date().toISOString() };
+      salvarPerfil(); renderMeta();
+    };
+    return;
+  }
+  const nome = m.nome ? `“${esc(m.nome)}”` : 'sua meta';
+  if (E.saldo >= m.valor) {
+    if (!m.alcancada) { m.alcancada = new Date().toISOString(); salvarPerfil(); }
+    el.innerHTML = `<div class="semana-msg">🎉 Você alcançou ${nome}: ${fmt(m.valor)}!</div>
+      <div class="acoes" style="justify-content:center;"><button class="btn-ghost" id="meta-nova">🎯 Definir uma nova meta</button></div>`;
+    $('meta-nova').onclick = () => { E.perfil.meta = null; salvarPerfil(); renderMeta(); };
+    return;
+  }
+  const pct = Math.max(2, Math.min(100, Math.round(E.saldo / m.valor * 100)));
+  const r = E.taxaDia / 100;
+  let prev = '';
+  if (r > 0 && E.saldo > 0) {
+    const dias = Math.ceil(Math.log(m.valor / E.saldo) / Math.log(1 + r));
+    if (dias > 3650) prev = 'Só com os juros de hoje, levaria mais de 10 anos. Quanto mais você guarda, mais rápido chega lá!';
+    else {
+      const d = new Date(); d.setDate(d.getDate() + dias);
+      prev = `Se nada mudar e só os juros rendendo, você chega lá em cerca de <b>${dias} dia${dias === 1 ? '' : 's'}</b> (por volta de ${d.toLocaleDateString('pt-BR')}).`;
+    }
+  } else prev = 'Você não tem juros rendendo agora, então não dá para estimar a data.';
+  el.innerHTML = `
+    <div style="font-size:16px; font-weight:900; margin-top:4px;">🎯 ${nome}</div>
+    <div class="prog"><div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div></div>
+    <div style="font-size:14px; font-weight:800;">${fmt(E.saldo)} de ${fmt(m.valor)} · faltam ${fmt(m.valor - E.saldo)}</div>
+    <p class="nota">${prev}</p>
+    <div class="acoes"><button class="btn-ghost" id="meta-trocar">✏️ Trocar meta</button></div>`;
+  $('meta-trocar').onclick = () => { E.perfil.meta = null; salvarPerfil(); renderMeta(); };
+}
+
+// ---- Simulador de juros
+function renderSimulador(){
+  const taxaIni = E.taxaMes > 0 ? E.taxaMes : 3;
+  $('sim-box').innerHTML = `
+    <p class="nota" style="margin-top:6px;">Descubra quanto o dinheiro guardado rende com juros. É só uma simulação: ela não muda o seu saldo.</p>
+    <div class="sim-linha">
+      <div class="field"><label for="sim-valor">Guardado (WL)</label><input type="text" id="sim-valor" inputmode="decimal" value="${(Math.round(E.saldo * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}"></div>
+      <div class="field"><label for="sim-taxa">Juros ao mês (%)</label><input type="text" id="sim-taxa" inputmode="decimal" value="${String(taxaIni).replace('.', ',')}"></div>
+    </div>
+    <div class="chips" role="group" aria-label="Tempo guardado">
+      ${[7, 30, 60, 90].map(d => `<button class="chip" data-sim="${d}" aria-pressed="${d === E.simDias}">${d} dias</button>`).join('')}
+    </div>
+    <div class="sim-res" id="sim-res" aria-live="polite"></div>
+    <p class="nota" id="sim-nota">${E.taxaMes > 0 ? `Seu plano hoje rende ${E.taxaMes.toFixed(2).replace('.', ',')}% ao mês.` : 'Você não tem plano de juros agora; usamos 3% ao mês como exemplo.'} A conta considera juros sobre juros, todo dia, sem novas entradas ou saídas.</p>`;
+  const marcar = () => { if (!E.perfil.sim) { E.perfil.sim = true; salvarPerfil(); renderMedalhas(); } };
+  const calcular = () => {
+    const v = lerNumero($('sim-valor').value), t = lerNumero($('sim-taxa').value);
+    const res = $('sim-res');
+    if (!(v >= 0) || v > 1000000 || !(t >= 0) || t > 100) { res.innerHTML = '<div class="peq">Digite um valor e uma taxa válidos (a taxa entre 0 e 100).</div>'; return; }
+    const fim = v * Math.pow(1 + t / 30 / 100, E.simDias);
+    const ganho = fim - v;
+    res.innerHTML = `<div class="peq">Em ${E.simDias} dias, ${fmt(v)} viram</div><div class="grande mono">${fmt(fim)}</div><div class="peq">${ganho > 0 ? `são ${fmt(ganho)} de juros, sem você fazer nada além de esperar. ✨` : 'Sem juros, o valor continua igual.'}</div>`;
+  };
+  ['sim-valor', 'sim-taxa'].forEach(id => $(id).addEventListener('input', () => { calcular(); marcar(); }));
+  document.querySelectorAll('[data-sim]').forEach(b => b.addEventListener('click', () => {
+    E.simDias = Number(b.dataset.sim);
+    document.querySelectorAll('[data-sim]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    calcular(); marcar();
+  }));
+  calcular();
+}
+
 // Nível: a cada WL 50 guardados sobe um nível (brincadeira visual, não vale nota)
 const WL_POR_NIVEL = 50;
 function atualizarNivel(saldo){
@@ -394,7 +764,7 @@ function renderDados(data){
   $('info-aluno').textContent = `${data.aluno.nome} · ${data.turma}${data.aluno.numero ? ' · Nº ' + data.aluno.numero : ''}`;
   animarSaldo(Number(data.saldo));
   atualizarNivel(Number(data.saldo));
-  $('valor-taxa').textContent = `⚡ Juros: ${Number(data.taxa_mensal_total).toFixed(2)}% ao mês`;
+  $('valor-taxa').textContent = `⚡ Juros: ${Number(data.taxa_mensal_total).toFixed(2).replace('.', ',')}% ao mês`;
 
   const pacotesEl = $('lista-pacotes');
   pacotesEl.innerHTML = data.pacotes_ativos.length
@@ -402,6 +772,7 @@ function renderDados(data){
     : '<div class="painel vazio">Nenhum plano ativo no momento.</div>';
 
   renderExtratoAgrupado(data.extrato || []);
+  renderEngajamento(data);
 }
 
 function partirRotulo(chave){
