@@ -295,6 +295,11 @@
     </section>
 
     <section class="secao">
+      <h3>🧾 E se não houvesse taxas?</h3>
+      <div class="painel" id="sem-taxas">—</div>
+    </section>
+
+    <section class="secao">
       <h3>📈 Evolução do meu saldo</h3>
       <div class="painel">
         <div class="chips" role="group" aria-label="Período do gráfico">
@@ -508,6 +513,7 @@ function renderEngajamento(data){
     renderMeta();
     renderMedalhas();
     renderSemana();
+    renderSemTaxas();
     desenharGrafico();
     renderSimulador();
     salvarPerfil();
@@ -575,6 +581,40 @@ function renderSemana(){
   el.innerHTML = `<div class="semana-msg">${msg}</div>
     <div class="tiles">${tile('📈', 'Juros', juros)}${tile('⭐', 'Bônus', bonus)}${tile('⚠️', 'Taxas', taxas)}${tile('🔁', 'Outros', outros)}</div>
     ${extra}${parcial ? '<div class="nota" style="text-align:center;">Considerando os seus últimos 100 lançamentos.</div>' : ''}`;
+}
+
+// ---- E se não houvesse taxas? (estimativa educativa)
+function renderSemTaxas(){
+  const el = $('sem-taxas');
+  const taxas = E.asc.filter(t => t.tipo === 'taxa_debito');
+  const aviso = E.truncado ? '<p class="nota" style="text-align:center;">Considerando os seus últimos 100 lançamentos.</p>' : '';
+  if (!taxas.length) {
+    el.innerHTML = `<div class="semana-msg">🌟 Você não pagou nenhuma taxa! Seu saldo é todo mérito dos seus bons hábitos.</div>${aviso}`;
+    return;
+  }
+  const r = E.taxaDia / 100;
+  let pagas = 0, perdidos = 0;
+  taxas.forEach(t => {
+    const v = Math.abs(Number(t.valor));
+    pagas += v;
+    if (r > 0) perdidos += v * (Math.pow(1 + r, Math.max(0, Math.floor((E.agora - t._ms) / DIA_MS))) - 1);
+  });
+  pagas = Math.round(pagas * 100) / 100;
+  perdidos = Math.round(perdidos * 100) / 100;
+  const total = Math.round((E.saldo + pagas + perdidos) * 100) / 100;
+  const n = taxas.length;
+  el.innerHTML = `
+    <div class="sim-res" style="margin-top:2px;">
+      <div class="peq">Sem as ${n} taxa${n === 1 ? '' : 's'} aplicada${n === 1 ? '' : 's'}, você teria cerca de</div>
+      <div class="grande mono">${fmt(total)}</div>
+      <div class="peq">hoje você tem ${fmt(E.saldo)}</div>
+    </div>
+    <div class="tiles" style="margin-top:12px;">
+      <div class="tile"><div class="t">⚠️ Taxas pagas</div><div class="v mono valor-neg">${fmt(pagas)}</div></div>
+      <div class="tile"><div class="t">📉 Juros que deixaram de render</div><div class="v mono valor-neg">${r > 0 ? fmt(perdidos) : '—'}</div></div>
+    </div>
+    <div class="semana-msg" style="font-size:14px;">💡 Cada taxa tira dinheiro na hora e ainda diminui os juros que o seu saldo renderia. Atitudes e atrasos têm custo, e cuidar deles faz o seu WL crescer mais rápido!</div>
+    <p class="nota" style="text-align:center;">É uma estimativa: usa os juros do seu plano de hoje e não considera outras mudanças.</p>${aviso}`;
 }
 
 // ---- Evolução do saldo (gráfico em SVG, sem bibliotecas)
@@ -647,7 +687,7 @@ function renderMeta(){
   if (!m) {
     el.innerHTML = `
       <p class="nota" style="margin-top:6px;">Escolha um objetivo e acompanhe o quanto falta. A meta fica guardada só neste aparelho.</p>
-      <div class="field"><label for="meta-nome">Meu objetivo (opcional)</label><input type="text" id="meta-nome" maxlength="30" placeholder="Ex.: Viagem da turma"></div>
+      <div class="field"><label for="meta-nome">Meu objetivo (opcional)</label><input type="text" id="meta-nome" maxlength="30" placeholder="Ex.: Poupar"></div>
       <div class="field"><label for="meta-valor">Quanto quero ter guardado (WL)</label><input type="text" id="meta-valor" inputmode="decimal" placeholder="${Math.ceil((E.saldo + 1) / 10) * 10}"></div>
       <button class="btn-gold" id="meta-salvar" style="font-size:17px;">Definir meta</button>
       <div id="meta-erro" role="alert" style="color:var(--red-ink); font-weight:800; font-size:14px; margin-top:8px; min-height:18px;"></div>`;
