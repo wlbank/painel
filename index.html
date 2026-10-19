@@ -252,6 +252,21 @@ const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => 'WL ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// ---------------------------------------------------------------- REGISTRO DE ACESSOS
+// Código anônimo do aparelho (para contar visitantes únicos). Não identifica ninguém.
+function idVisitante(){
+  try {
+    let v = localStorage.getItem('wlbank-visitante');
+    if (!v) {
+      v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+      localStorage.setItem('wlbank-visitante', v);
+    }
+    return v;
+  } catch (e) { return null; }
+}
+// Nunca atrapalha o aluno: se o registro falhar, segue normalmente.
+try { Promise.resolve(supabase.rpc('fn_registrar_visita', { p_visitante: idVisitante() })).catch(() => {}); } catch (e) {}
+
 // ---------------------------------------------------------------- DICA DO DIA
 const dicasEducativas = [
   '📚 Matemática na prática: juro é a "porcentagem que rende sozinha". Se você tem WL 100 e o plano rende 6% ao mês, em 30 dias viram WL 106 — sem fazer nada além de deixar guardado.',
@@ -274,12 +289,19 @@ const dicasEducativas = [
   '🔑 Guardar dinheiro (ou WL) não é sobre ficar rico rápido — é sobre construir o hábito de esperar e planejar. Esse hábito vale muito mais que qualquer valor guardado.',
 ];
 
+// Sorteia uma dica nova a cada carregamento/atualização da página e a cada login,
+// sem repetir a mesma dica da vez anterior.
 function mostrarDicaDoDia(){
   const el = document.getElementById('cartao-dica-dia');
   if (!el) return;
-  const inicioAno = new Date(new Date().getFullYear(), 0, 0);
-  const diaDoAno = Math.floor((Date.now() - inicioAno) / 86400000);
-  el.textContent = dicasEducativas[diaDoAno % dicasEducativas.length];
+  let ultima = -1;
+  try { ultima = parseInt(localStorage.getItem('wlbank-ultima-dica'), 10); } catch(e){}
+  if (isNaN(ultima)) ultima = -1;
+  let i;
+  do { i = Math.floor(Math.random() * dicasEducativas.length); }
+  while (i === ultima && dicasEducativas.length > 1);
+  try { localStorage.setItem('wlbank-ultima-dica', String(i)); } catch(e){}
+  el.textContent = dicasEducativas[i];
 }
 mostrarDicaDoDia();
 
@@ -312,6 +334,7 @@ $('form-login').addEventListener('submit', async (e) => {
   sessionStorage.setItem('bancowl_ra', ra);
   sessionStorage.setItem('bancowl_senha', senha);
   sessionStorage.setItem('bancowl_digito', digito);
+  try { Promise.resolve(supabase.rpc('fn_registrar_login', { p_ra: ra, p_senha: senha, p_digito: digito || null, p_visitante: idVisitante() })).catch(() => {}); } catch (e) {}
   renderDados(data);
 });
 
@@ -364,6 +387,7 @@ $('seletor-tema').addEventListener('change', (e) => {
 });
 
 function renderDados(data){
+  mostrarDicaDoDia();
   $('tela-login').classList.add('hidden');
   $('tela-conta').classList.remove('hidden');
 

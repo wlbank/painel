@@ -206,6 +206,7 @@
         <button class="btn-ghost btn-small" id="btn-config">⚙️ Configurações</button>
         <button class="btn-ghost btn-small" id="btn-loja">🛍️ Loja</button>
         <button class="btn-ghost btn-small" id="btn-relatorios">📊 Relatórios</button>
+        <button class="btn-ghost btn-small" id="btn-acessos">👀 Acessos</button>
         <button class="btn-ghost btn-small" id="btn-sair">Sair</button>
       </div>
     </div>
@@ -610,6 +611,66 @@
     </div>
   </div>
 
+  <!-- TELA DE ACESSOS -->
+  <div id="tela-acessos" class="hidden" style="flex:1; padding:26px 32px; overflow-y:auto; background-image: radial-gradient(rgba(var(--border-rgb),0.18) 1px, transparent 1px); background-size: 22px 22px;">
+    <div class="barra-titulo">
+      <h2 class="brand">👀 Acessos</h2>
+      <button class="btn-ghost btn-small" id="btn-voltar-acessos">← Voltar ao painel</button>
+    </div>
+
+    <div class="cartao">
+      <h3>Filtros</h3>
+      <div class="grid-2">
+        <div class="field">
+          <label>Período</label>
+          <select id="ac-periodo">
+            <option value="1">Hoje</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="">Desde o início</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Turma</label>
+          <select id="ac-turma"></select>
+        </div>
+      </div>
+      <div class="field" style="max-width:320px;">
+        <label>Mostrar</label>
+        <select id="ac-filtro">
+          <option value="todos">Todos os alunos</option>
+          <option value="entraram">Só quem entrou no período</option>
+          <option value="nunca">Só quem NÃO entrou no período</option>
+        </select>
+      </div>
+      <button id="btn-atualizar-acessos" class="btn-gold btn-small">Atualizar</button>
+      <button id="btn-exportar-acessos" class="btn-ghost btn-small hidden" style="margin-left:8px;">⬇️ Exportar CSV</button>
+    </div>
+
+    <div id="ac-resumo" class="grid-2" style="margin-bottom:20px; gap:14px;"></div>
+
+    <div class="cartao" style="border-top-color:var(--pink);">
+      <h3>📈 Visitas e logins por dia</h3>
+      <div style="position:relative; height:240px;"><canvas id="grafico-acessos"></canvas></div>
+      <div id="ac-sem-dados" class="hidden" style="font-size:13px; color:var(--ink-soft);">Ainda não há acessos registrados neste período.</div>
+    </div>
+
+    <div class="cartao">
+      <h3>🎒 Alunos que se conectaram</h3>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">
+        “Visitas” contam toda vez que a página é aberta ou atualizada (mesmo sem login). “Logins” contam só as entradas de alunos com RA e senha corretos.
+        Clique em <b>🕒 Ver horários</b> para ver a data e hora de cada entrada.
+      </div>
+      <div style="max-height:520px; overflow-y:auto;">
+        <table class="ledger">
+          <thead><tr><th>Aluno</th><th>Turma</th><th style="text-align:right;">Entradas</th><th>Último acesso</th><th></th></tr></thead>
+          <tbody id="corpo-acessos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- TELA DE RELATÓRIOS -->
   <div id="tela-relatorios" class="hidden" style="flex:1; padding:26px 32px; overflow-y:auto; background-image: radial-gradient(rgba(var(--border-rgb),0.18) 1px, transparent 1px); background-size: 22px 22px;">
     <div class="barra-titulo">
@@ -914,6 +975,7 @@ async function entrarNoApp(){
   $('email-usuario').textContent = session.user.email;
   cargoUsuarioAtual = session.user.user_metadata?.cargo || 'professor';
   $('badge-cargo').textContent = cargoUsuarioAtual;
+  $('btn-acessos').classList.toggle('hidden', cargoUsuarioAtual === 'vendedor');
   await carregarPacotesCache();
   await carregarTurmas();
 }
@@ -2928,6 +2990,149 @@ function abrirModalCobranca(cobrancaId, total){
     toast('Cobrança cancelada.');
   });
 }
+
+// ---------------------------------------------------------------- ACESSOS (visitas e logins dos alunos)
+let chartAcessos = null;
+let linhasAcessos = [];
+const escAc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDataHora = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+
+$('btn-acessos').addEventListener('click', async () => {
+  $('tela-app').classList.add('hidden');
+  $('tela-acessos').classList.remove('hidden');
+  const sel = $('ac-turma');
+  if (!sel.options.length) {
+    sel.innerHTML = `<option value="">🏫 Escola toda</option>` + turmasCache.map(t => `<option value="${t.id}">${escAc(t.nome)}</option>`).join('');
+  }
+  await carregarAcessos();
+});
+$('btn-voltar-acessos').addEventListener('click', () => {
+  $('tela-acessos').classList.add('hidden');
+  $('tela-app').classList.remove('hidden');
+});
+$('btn-atualizar-acessos').addEventListener('click', carregarAcessos);
+['ac-periodo','ac-turma','ac-filtro'].forEach(id => $(id).addEventListener('change', carregarAcessos));
+
+async function carregarAcessos(){
+  const dias = $('ac-periodo').value === '' ? null : parseInt($('ac-periodo').value, 10);
+  const turma = $('ac-turma').value || null;
+
+  const [resumo, lista] = await Promise.all([
+    supabase.rpc('fn_resumo_acessos', { p_dias: dias }),
+    supabase.rpc('fn_listar_acessos_alunos', { p_dias: dias, p_turma_id: turma })
+  ]);
+  if (resumo.error || lista.error) {
+    toast('Erro ao carregar acessos: ' + (resumo.error || lista.error).message + ' (rodou o fix_acessos.sql?)', true);
+    return;
+  }
+  renderResumoAcessos(resumo.data, lista.data || []);
+  renderGraficoAcessos(resumo.data.serie || []);
+  linhasAcessos = lista.data || [];
+  renderTabelaAcessos();
+}
+
+function renderResumoAcessos(r, alunos){
+  const entraram = alunos.filter(a => Number(a.total_logins) > 0).length;
+  const cartoes = [
+    { titulo: 'Visitas à página (período)', valor: r.visitas_periodo, cor: 'violet', icone: '👀' },
+    { titulo: 'Aparelhos diferentes', valor: r.visitantes_unicos, cor: 'mint', icone: '📱' },
+    { titulo: 'Logins de alunos (período)', valor: r.logins_periodo, cor: 'green', icone: '🔑' },
+    { titulo: 'Alunos que entraram', valor: `${entraram} de ${alunos.length}`, cor: 'sun-2', icone: '🎒' },
+    { titulo: 'Visitas hoje', valor: r.visitas_hoje, cor: 'pink', icone: '☀️' },
+    { titulo: 'Logins hoje', valor: r.logins_hoje, cor: 'coral', icone: '⚡' }
+  ];
+  $('ac-resumo').innerHTML = cartoes.map(c => `
+    <div class="cartao" style="margin-bottom:0; border-top-color:var(--${c.cor}); display:flex; align-items:center; gap:12px;">
+      <div style="font-size:26px;">${c.icone}</div>
+      <div>
+        <div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em;">${c.titulo}</div>
+        <div class="mono" style="font-size:21px; font-weight:700; color:var(--${c.cor});">${c.valor}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderGraficoAcessos(serie){
+  const canvas = $('grafico-acessos');
+  if (chartAcessos) { chartAcessos.destroy(); chartAcessos = null; }
+  $('ac-sem-dados').classList.toggle('hidden', serie.length > 0);
+  if (!serie.length) return;
+  const corTexto = corVar('ink-soft');
+  const corGrade = 'rgba(' + corVar('border-rgb') + ',0.12)';
+  chartAcessos = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: serie.map(d => { const [a,m,dd] = d.dia.split('-'); return `${dd}/${m}`; }),
+      datasets: [
+        { label: 'Visitas', data: serie.map(d => d.visitas), backgroundColor: corVar('violet') },
+        { label: 'Logins', data: serie.map(d => d.logins), backgroundColor: corVar('green') }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: corTexto, font: { family: 'Nunito' } } } },
+      scales: {
+        x: { ticks: { color: corTexto, font: { size: 10 } }, grid: { color: corGrade } },
+        y: { beginAtZero: true, ticks: { color: corTexto, font: { size: 10 }, precision: 0 }, grid: { color: corGrade } }
+      }
+    }
+  });
+}
+
+function acessosFiltrados(){
+  const f = $('ac-filtro').value;
+  return linhasAcessos.filter(a => f === 'todos' || (f === 'entraram' ? Number(a.total_logins) > 0 : Number(a.total_logins) === 0));
+}
+
+function renderTabelaAcessos(){
+  const linhas = acessosFiltrados();
+  $('btn-exportar-acessos').classList.toggle('hidden', !linhas.length);
+  $('corpo-acessos').innerHTML = linhas.map(a => `
+    <tr>
+      <td><b>${escAc(a.nome)}</b>${a.numero ? ` <span style="color:var(--ink-soft);">nº ${a.numero}</span>` : ''}</td>
+      <td>${escAc(a.turma)}</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${a.total_logins}</td>
+      <td class="mono" style="font-size:12px;">${Number(a.total_logins) > 0 ? fmtDataHora(a.ultimo_acesso) : '<span style="color:var(--ink-soft);">não entrou no período</span>'}</td>
+      <td>${Number(a.total_logins) > 0 ? `<button class="btn-ghost btn-small btn-horarios" data-id="${a.aluno_id}" data-nome="${escAc(a.nome)}">🕒 Ver horários</button>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--ink-soft);">Nenhum aluno para mostrar.</td></tr>';
+
+  document.querySelectorAll('.btn-horarios').forEach(b => b.addEventListener('click', () => abrirHorariosAluno(b.dataset.id, b.dataset.nome)));
+}
+
+async function abrirHorariosAluno(alunoId, nome){
+  const { data, error } = await supabase.rpc('fn_historico_acessos_aluno', { p_aluno_id: alunoId, p_limite: 200 });
+  if (error) { toast('Erro: ' + error.message, true); return; }
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <header>
+        <h3>🕒 ${escAc(nome)}</h3>
+        <button class="fechar-x" id="horarios-fechar">✕</button>
+      </header>
+      <div style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;">${data.length} entrada(s) registrada(s)${data.length >= 200 ? ' (mostrando as 200 mais recentes)' : ''}, da mais recente para a mais antiga.</div>
+      <div style="max-height:50vh; overflow-y:auto;">
+        <table class="ledger"><tbody>
+          ${data.map((x, i) => `<tr><td class="mono" style="color:var(--ink-soft);">${data.length - i}</td><td class="mono">${fmtDataHora(x.criado_em)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  $('horarios-fechar').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+}
+
+$('btn-exportar-acessos').addEventListener('click', () => {
+  const linhas = acessosFiltrados();
+  const csv = [['Aluno','Número','Turma','RA','Entradas no período','Primeiro acesso','Último acesso']]
+    .concat(linhas.map(a => [a.nome, a.numero ?? '', a.turma, a.ra ?? '', a.total_logins, fmtDataHora(a.primeiro_acesso), fmtDataHora(a.ultimo_acesso)]))
+    .map(l => l.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'acessos-alunos.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 </script>
 </body>
 </html>
