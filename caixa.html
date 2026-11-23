@@ -53,6 +53,10 @@
   /* ---- layout ---- */
   .wrap{ max-width:1300px; margin:0 auto; padding:4px 20px 120px; }
   .titulo{ margin:4px 0 14px; font-family:'Lilita One',sans-serif; font-weight:400; font-size:32px; }
+  .trilha{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:900; font-size:17px; margin:2px 0 10px; }
+  .trilha button{ background:none; border:0; font:inherit; color:inherit; text-decoration:underline; cursor:pointer; padding:8px 6px; border-radius:10px; }
+  .trilha .sep{ opacity:.5; } .trilha .atual{ opacity:.7; padding:8px 6px; }
+  .cab-venda{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
   .cab-etapa{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
   .cab-etapa .titulo{ margin:0; }
   .btn-grande{ font-size:20px; padding:14px 20px; }
@@ -80,6 +84,8 @@
   .big:disabled{ opacity:.45; cursor:not-allowed; }
   .turma{ min-height:120px; text-align:center; font-family:'Lilita One',sans-serif; font-size:36px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
   .turma small{ font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; color:var(--soft); }
+  .turma.avulsa{ background:var(--sun); color:#2A1A5E; font-size:28px; }
+  .turma.avulsa small{ color:#2A1A5E; }
   .turma.sel{ background:var(--sun); color:#2A1A5E; }
   .aluno{ min-height:96px; display:flex; flex-direction:column; justify-content:center; gap:3px; padding-left:62px; }
   .aluno .num{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; background:var(--card); border:3px solid var(--line); display:grid; place-items:center; font-family:'Lilita One',sans-serif; font-size:16px; }
@@ -183,7 +189,7 @@
 </script>
 
 <!-- ENTRAR -->
-<div id="tela-login" class="login hidden">
+<div id="tela-login" class="login">
   <div class="modal">
     <h3 style="text-align:center;">🛒 Caixa WL Bank</h3>
     <p style="text-align:center; color:var(--soft);">Entre com o mesmo e-mail e senha do painel.</p>
@@ -217,6 +223,7 @@
   </header>
 
   <main class="wrap">
+    <nav id="trilha" class="trilha" aria-label="Onde estou"></nav>
     <section id="et-turmas">
       <h2 class="titulo">1️⃣ Escolha a turma</h2>
       <div id="g-turmas" class="grade g-turmas"></div>
@@ -233,6 +240,7 @@
     </section>
 
     <section id="et-venda" class="hidden">
+      <div class="cab-venda"><button class="btn btn-grande" id="btn-voltar-venda">← Voltar</button></div>
       <div class="ficha" id="ficha"></div>
       <div class="layout">
         <div id="g-produtos" class="grade g-produtos"></div>
@@ -255,22 +263,37 @@
   </div>
 </div>
 
+<div id="aviso-falha" class="hidden" style="position:fixed;left:12px;right:12px;top:12px;z-index:90;background:#FF5A4F;color:#2A1A5E;border:3px solid #2A1A5E;border-radius:18px;padding:14px 18px;font-weight:800;text-align:center;"></div>
+<script>
+  // Se algo falhar ao carregar, mostra o motivo em vez de deixar a tela em branco.
+  function avisoFalha(msg){ var e=document.getElementById('aviso-falha'); e.textContent='⚠️ '+msg; e.classList.remove('hidden'); }
+  if (/COLE_AQUI/.test(CONFIG.SUPABASE_URL+CONFIG.SUPABASE_ANON_KEY)) avisoFalha('Falta preencher o CONFIG (URL e chave anon do Supabase) no início do arquivo caixa.html.');
+  window.addEventListener('error', function(e){ avisoFalha('Erro ao carregar a página: '+(e.message||'verifique a internet e o CONFIG')); });
+  window.addEventListener('unhandledrejection', function(e){ avisoFalha('Erro: '+((e.reason&&e.reason.message)||e.reason)); });
+</script>
 <div id="toast" class="toast hidden" role="status"></div>
 <div id="janela" class="hidden"></div>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+let supabase;
+try { supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY); }
+catch (e) { window.avisoFalha('CONFIG inválido: confira a URL e a chave anon no início do caixa.html.'); throw e; }
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (v) => 'WL ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const cents = (v) => Math.round(Number(v) * 100);
+const fmtBRL = (v) => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const precoDe = (p) => avulsa ? Math.round(Number(p.preco) * cambio * 100) / 100 : Number(p.preco);   // preço mostrado (R$ na avulsa, WL no resto)
+const fm = (v) => avulsa ? fmtBRL(v) : fmt(v);
 
 let somenteVendedor = false;
 let turmas = [], alunos = [], produtos = [];
 let etapa = 'turmas';
+const limites = new Map();   // produto_id -> quanto o aluno atual já comprou (só produtos com limite)
+let avulsa = false, cambio = 1;   // venda avulsa em R$ (cambio = reais por 1 WL)
 let turmaId = null, alunoId = null, busca = '';
 const carrinho = new Map();          // produto_id -> quantidade
 const vendas = [];                   // últimas vendas desta sessão
@@ -337,35 +360,59 @@ async function carregarTudo(){
     if (data.length < 1000) break;
   }
   await carregarProdutos();
+  const rc = await supabase.rpc('fn_caixa_cambio');
+  if (!rc.error && rc.data != null) cambio = Number(rc.data);
 }
+
+async function carregarLimites(id){
+  limites.clear();
+  const { data, error } = await supabase.rpc('fn_caixa_limites_aluno', { p_aluno_id: id });
+  if (!error) (data || []).forEach(l => limites.set(l.produto_id, Number(l.comprados)));
+}
+// quantas unidades ainda podem ser levadas por este aluno (Infinity = sem limite)
+const podeLevar = (p) => (avulsa || p.max_por_aluno == null) ? Infinity : p.max_por_aluno - (limites.get(p.id) || 0) - (carrinho.get(p.id) || 0);
 
 const saldoDe = (a) => (a && a.saldo != null ? Number(a.saldo) : null);
 const nomeTurma = (id) => turmas.find(t => t.id === id)?.nome || '';
 const alunoAtual = () => alunos.find(a => a.id === alunoId) || null;
 
 // ---------------------------------------------------------------- desenho
-const totalCents = () => [...carrinho].reduce((s, [id, q]) => s + cents(produtos.find(p => p.id === id)?.preco || 0) * q, 0);
+const totalCents = () => [...carrinho].reduce((s, [id, q]) => s + cents(precoDe(produtos.find(p => p.id === id) || { preco: 0 })) * q, 0);
 const nItens = () => [...carrinho.values()].reduce((x, y) => x + y, 0);
-const restoCents = () => { const s = saldoDe(alunoAtual()); return s == null ? Infinity : cents(s) - totalCents(); };
+const restoCents = () => { if (avulsa) return Infinity; const s = saldoDe(alunoAtual()); return s == null ? Infinity : cents(s) - totalCents(); };
 
 function render(){
   $('et-turmas').classList.toggle('hidden', etapa !== 'turmas');
   $('et-alunos').classList.toggle('hidden', etapa !== 'alunos');
   $('et-venda').classList.toggle('hidden', etapa !== 'venda');
   $('barra-fixa').classList.toggle('hidden', etapa !== 'venda');
+  renderTrilha();
   if (etapa === 'turmas') renderTurmas();
   if (etapa === 'alunos') renderAlunos();
   if (etapa === 'venda') { renderFicha(); renderProdutos(); renderCarrinho(); }
 }
+function renderTrilha(){
+  const partes = [];
+  if (etapa === 'turmas') partes.push('<span class="atual">🏠 Turmas</span>');
+  else partes.push('<button data-ir="turmas">🏠 Turmas</button>');
+  if (etapa === 'alunos') partes.push(`<span class="atual">${esc(nomeTurma(turmaId))}</span>`);
+  if (etapa === 'venda' && avulsa) partes.push('<span class="atual">💵 Venda avulsa</span>');
+  if (etapa === 'venda' && !avulsa) {
+    partes.push(`<button data-ir="alunos">${esc(nomeTurma(turmaId))}</button>`);
+    partes.push(`<span class="atual">${esc(alunoAtual()?.nome || '')}</span>`);
+  }
+  $('trilha').innerHTML = partes.join('<span class="sep">›</span>');
+  $('trilha').classList.toggle('hidden', etapa === 'turmas');
+}
 function irPara(e){ etapa = e; render(); window.scrollTo(0, 0); }
 
 function renderTurmas(){
-  $('g-turmas').innerHTML = turmas.map(t => {
+  $('g-turmas').innerHTML = `<button class="big turma avulsa" data-avulsa="1">💵 Venda avulsa<small>pagamento em R$</small></button>` + turmas.map(t => {
     const n = alunos.filter(a => a.turma_id === t.id).length;
     return `<button class="big turma" data-turma="${t.id}">${esc(t.nome)}<small>${n} aluno${n === 1 ? '' : 's'}</small></button>`;
-  }).join('') || '<div class="dica">Nenhuma turma cadastrada.</div>';
+  }).join('');
   $('ult').innerHTML = vendas.length
-    ? `<b>Últimas vendas</b><ul>${vendas.slice(0, 5).map(v => `<li>${v.hora} · ${esc(v.nome)} · <b>${fmt(v.total)}</b></li>`).join('')}</ul>` : '';
+    ? `<b>Últimas vendas</b><ul>${vendas.slice(0, 5).map(v => `<li>${v.hora} · ${esc(v.nome)} · <b>${v.brl ? fmtBRL(v.total) : fmt(v.total)}</b></li>`).join('')}</ul>` : '';
 }
 
 function alunosFiltrados(){
@@ -385,6 +432,12 @@ function renderAlunos(){
 }
 
 function renderFicha(){
+  if (avulsa) {
+    $('ficha').classList.remove('ruim');
+    $('ficha').innerHTML = `<div><div class="f-turma">Sem aluno · pagamento em reais</div><div class="f-nome">💵 Venda avulsa</div></div>
+      <div class="f-saldo"><small>TOTAL A RECEBER</small><b>${fmtBRL(totalCents() / 100)}</b><div class="f-det">Câmbio: 1 WL = ${fmtBRL(cambio)}</div></div>`;
+    return;
+  }
   const a = alunoAtual(); if (!a) return;
   const s = saldoDe(a), tc = totalCents();
   const resto = s == null ? null : (cents(s) - tc) / 100;
@@ -399,23 +452,31 @@ function renderProdutos(){
     const q = carrinho.get(p.id) || 0;
     const esgotado = p.estoque != null && p.estoque - q <= 0;
     const semSaldo = cents(p.preco) > resto;
-    const bloq = esgotado || semSaldo;
-    const info = esgotado ? (q ? 'Acabou o estoque' : 'Esgotado') : semSaldo ? 'Saldo insuficiente' : (p.estoque != null ? p.estoque + ' em estoque' : '&nbsp;');
-    return `<button class="big produto" data-produto="${p.id}" ${bloq ? 'disabled' : ''}>${q ? `<span class="qtd">×${q}</span>` : ''}<span class="pn">${esc(p.nome)}</span><span class="pp">${fmt(p.preco)}</span><span class="pe">${info}</span></button>`;
+    const pl = podeLevar(p);
+    const noLimite = pl <= 0;
+    const bloq = esgotado || semSaldo || noLimite;
+    const estq = p.estoque != null ? p.estoque + ' em estoque' : '';
+    const lim = (!avulsa && p.max_por_aluno != null) ? `máx. ${p.max_por_aluno} por aluno` : '';
+    const info = esgotado ? (q ? 'Acabou o estoque' : 'Esgotado')
+      : noLimite ? ((limites.get(p.id) || 0) >= p.max_por_aluno ? 'Já comprou o máximo' : 'Limite por aluno atingido')
+      : semSaldo ? 'Saldo insuficiente'
+      : ([estq, lim].filter(Boolean).join(' · ') || '&nbsp;');
+    return `<button class="big produto" data-produto="${p.id}" ${bloq ? 'disabled' : ''}>${q ? `<span class="qtd">×${q}</span>` : ''}<span class="pn">${esc(p.nome)}</span><span class="pp">${fm(precoDe(p))}</span><span class="pe">${info}</span></button>`;
   }).join('') || '<div class="dica">Nenhum produto ativo. Cadastre produtos na aba Loja do painel.</div>';
 }
 
 function renderCarrinho(){
   const linhas = [...carrinho].map(([id, q]) => {
     const p = produtos.find(x => x.id === id); if (!p) return '';
-    return `<div class="cli"><div class="cn">${esc(p.nome)}<div class="cs">${fmt(p.preco)} cada · ${fmt(cents(p.preco) * q / 100)}</div></div>
+    return `<div class="cli"><div class="cn">${esc(p.nome)}<div class="cs">${fm(precoDe(p))} cada · ${fm(cents(precoDe(p)) * q / 100)}</div></div>
       <button class="qbtn" data-menos="${id}" aria-label="Tirar um">−</button><span class="qn">${q}</span><button class="qbtn" data-mais="${id}" aria-label="Adicionar um">+</button></div>`;
   }).join('');
   $('itens').innerHTML = linhas || '<div class="dica" style="text-align:center;">Toque nos produtos para adicionar.</div>';
 
   const tc = totalCents(), n = nItens(), resto = restoCents();
-  $('total').textContent = fmt(tc / 100);
-  $('bf-total').textContent = fmt(tc / 100);
+  $('total').textContent = fm(tc / 100);
+  $('bf-total').textContent = fm(tc / 100);
+  $('btn-trocar').textContent = avulsa ? '↩️ Voltar às turmas' : '👤 Trocar aluno';
   $('bf-info').textContent = n ? `${n} item(ns)` : 'Nenhum item';
   const dep = $('depois');
   if (n && resto !== Infinity) {
@@ -434,25 +495,39 @@ function somar(id, d){
   const novo = (carrinho.get(id) || 0) + d;
   if (novo <= 0) carrinho.delete(id);
   else if (p.estoque != null && novo > p.estoque) { toast(`Só há ${p.estoque} em estoque de "${p.nome}".`, true); return; }
-  else if (d > 0 && cents(p.preco) > restoCents()) { toast('Saldo insuficiente para esse item.', true); return; }
+  else if (d > 0 && podeLevar(p) <= 0) { toast(`Limite de ${p.max_por_aluno} por aluno para "${p.nome}".`, true); return; }
+  else if (d > 0 && cents(precoDe(p)) > restoCents()) { toast('Saldo insuficiente para esse item.', true); return; }
   else carrinho.set(id, novo);
   atualizarVenda();
 }
-function novaVenda(){ carrinho.clear(); alunoId = null; turmaId = null; busca = ''; $('busca').value = ''; irPara('turmas'); }
+function voltarUmPasso(){
+  carrinho.clear();
+  if (etapa === 'venda' && !avulsa && turmaId) { alunoId = null; irPara('alunos'); }
+  else novaVenda();
+}
+$('trilha').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ir]'); if (!b) return;
+  if (b.dataset.ir === 'turmas') novaVenda(); else voltarUmPasso();
+});
+$('btn-voltar-venda').addEventListener('click', voltarUmPasso);
+function novaVenda(){ avulsa = false; carrinho.clear(); alunoId = null; turmaId = null; busca = ''; $('busca').value = ''; irPara('turmas'); }
 
-$('g-turmas').addEventListener('click', (e) => { const b = e.target.closest('[data-turma]'); if (!b) return; turmaId = b.dataset.turma; busca = ''; $('busca').value = ''; irPara('alunos'); });
-$('g-alunos').addEventListener('click', (e) => { const b = e.target.closest('[data-aluno]'); if (!b) return; alunoId = b.dataset.aluno; carrinho.clear(); irPara('venda'); });
+$('g-turmas').addEventListener('click', (e) => {
+  if (e.target.closest('[data-avulsa]')) { avulsa = true; alunoId = null; turmaId = null; carrinho.clear(); limites.clear(); irPara('venda'); return; }
+  const b = e.target.closest('[data-turma]'); if (!b) return; turmaId = b.dataset.turma; busca = ''; $('busca').value = ''; irPara('alunos'); });
+async function escolherAluno(id){ alunoId = id; carrinho.clear(); await carregarLimites(id); irPara('venda'); }
+$('g-alunos').addEventListener('click', (e) => { const b = e.target.closest('[data-aluno]'); if (b) escolherAluno(b.dataset.aluno); });
 $('g-produtos').addEventListener('click', (e) => { const b = e.target.closest('[data-produto]'); if (b) somar(b.dataset.produto, 1); });
 $('carrinho').addEventListener('click', (e) => {
   const m = e.target.closest('[data-mais]'), n = e.target.closest('[data-menos]');
   if (m) somar(m.dataset.mais, 1); else if (n) somar(n.dataset.menos, -1);
 });
 $('btn-limpar').addEventListener('click', () => { carrinho.clear(); atualizarVenda(); });
-$('btn-trocar').addEventListener('click', () => { carrinho.clear(); alunoId = null; irPara('alunos'); });
+$('btn-trocar').addEventListener('click', () => { carrinho.clear(); alunoId = null; if (avulsa) { avulsa = false; irPara('turmas'); } else irPara('alunos'); });
 $('btn-voltar-turmas').addEventListener('click', () => { turmaId = null; irPara('turmas'); });
 $('busca').addEventListener('input', (e) => { busca = e.target.value; renderAlunos(); });
 $('busca').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { const l = alunosFiltrados(); if (l.length === 1) { alunoId = l[0].id; carrinho.clear(); irPara('venda'); } }
+  if (e.key === 'Enter') { const l = alunosFiltrados(); if (l.length === 1) escolherAluno(l[0].id); }
 });
 $('btn-finalizar').addEventListener('click', abrirConfirmacao);
 $('btn-finalizar-2').addEventListener('click', abrirConfirmacao);
@@ -461,16 +536,16 @@ $('btn-finalizar-2').addEventListener('click', abrirConfirmacao);
 function fecharJanela(){ $('janela').classList.add('hidden'); $('janela').innerHTML = ''; clearTimeout(timerOk); }
 
 function abrirConfirmacao(){
-  const a = alunoAtual(); if (!a || !carrinho.size || vendendo) return;
+  const a = avulsa ? { nome: 'Venda avulsa' } : alunoAtual(); if (!a || !carrinho.size || vendendo) return;
   const total = totalCents() / 100;
   const resumo = [...carrinho].map(([id, q]) => `${q}× ${esc(produtos.find(p => p.id === id)?.nome || '')}`).join(', ');
   $('janela').className = '';
   $('janela').innerHTML = `<div class="overlay"><div class="modal" role="dialog" aria-modal="true">
     <h3>Confirmar venda</h3>
-    <p>${esc(a.nome)} · ${esc(nomeTurma(a.turma_id))}</p>
-    <div class="grande">${fmt(total)}</div>
+    <p>${avulsa ? '💵 Venda avulsa · receber em reais' : esc(a.nome) + ' · ' + esc(nomeTurma(a.turma_id))}</p>
+    <div class="grande">${fm(total)}</div>
     <p style="color:var(--soft); font-size:15px;">${resumo}</p>
-    ${saldoDe(a) != null ? `<p>Saldo depois: <b>${fmt(restoCents() / 100)}</b></p>` : ''}
+    ${!avulsa && saldoDe(a) != null ? `<p>Saldo depois: <b>${fmt(restoCents() / 100)}</b></p>` : ''}
     <p class="erro" id="erro-venda"></p>
     <div class="acoes"><button class="confirmar" id="btn-confirmar">✅ Confirmar</button><button class="btn voltar" id="btn-voltar">↩️ Voltar</button></div>
   </div></div>`;
@@ -481,32 +556,36 @@ function abrirConfirmacao(){
 
 async function vender(){
   if (vendendo) return;
-  const a = alunoAtual(); if (!a || !carrinho.size) return;
+  const a = avulsa ? { nome: 'Venda avulsa' } : alunoAtual(); if (!a || !carrinho.size) return;
   vendendo = true;
   const btn = $('btn-confirmar'); btn.disabled = true; btn.textContent = 'Vendendo…';
   const itens = [...carrinho].map(([produto_id, quantidade]) => ({ produto_id, quantidade }));
   const total = totalCents() / 100;
-  const { data, error } = await supabase.rpc('fn_professor_vender', { p_aluno_id: a.id, p_itens: itens });
+  const ehAvulsa = avulsa;
+  const { data, error } = ehAvulsa
+    ? await supabase.rpc('fn_vender_avulso', { p_itens: itens })
+    : await supabase.rpc('fn_professor_vender', { p_aluno_id: a.id, p_itens: itens });
   vendendo = false;
   if (error) {
     btn.disabled = false; btn.textContent = '✅ Confirmar';
     $('erro-venda').textContent = '⚠️ ' + error.message.replace(/^.*?: /, '');
     return;
   }
-  const novoSaldo = data?.novo_saldo;
+  const novoSaldo = ehAvulsa ? null : data?.novo_saldo;
   if (novoSaldo != null) a.saldo = novoSaldo;
-  vendas.unshift({ nome: a.nome, total, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
-  mostrarSucesso(a, total, novoSaldo);
+  const totalFinal = ehAvulsa && data?.total_brl != null ? Number(data.total_brl) : total;
+  vendas.unshift({ nome: a.nome, total: totalFinal, brl: ehAvulsa, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
+  mostrarSucesso(a, totalFinal, novoSaldo, ehAvulsa);
   await carregarProdutos();
   novaVenda();          // volta para a tela inicial (turmas)
 }
 
-function mostrarSucesso(a, total, novoSaldo){
+function mostrarSucesso(a, total, novoSaldo, brl = false){
   $('janela').className = '';
   $('janela').innerHTML = `<div class="overlay"><div class="modal" role="dialog" aria-modal="true">
     <div class="ok-icone">✅</div>
     <h3>Venda concluída!</h3>
-    <p>${esc(a.nome)} pagou <b>${fmt(total)}</b></p>
+    <p>${brl ? 'Receber em dinheiro/PIX: <b>' + fmtBRL(total) + '</b>' : esc(a.nome) + ' pagou <b>' + fmt(total) + '</b>'}</p>
     ${novoSaldo != null ? `<p style="color:var(--soft);">Novo saldo: ${fmt(novoSaldo)}</p>` : ''}
     <div class="acoes"><button class="confirmar" id="btn-proxima">➡️ Próxima venda</button></div>
   </div></div>`;

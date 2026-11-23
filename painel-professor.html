@@ -287,6 +287,7 @@
         <button class="btn-ghost btn-small" id="btn-loja">🛍️ Loja</button>
         <button class="btn-ghost btn-small" id="btn-relatorios">📊 Relatórios</button>
         <button class="btn-ghost btn-small" id="btn-caixa-pagina">🛒 Caixa</button>
+        <button class="btn-ghost btn-small" id="btn-rel-caixa">💵 Câmbio e vendas</button>
         <button class="btn-ghost btn-small" id="btn-acessos">👀 Acessos</button>
         <button class="btn-ghost btn-small" id="btn-sair">Sair</button>
       </div>
@@ -634,7 +635,7 @@
       <div class="cartao">
         <h3>Produtos</h3>
         <table class="ledger" style="margin-bottom:20px;">
-          <thead><tr><th>Nome</th><th>Preço</th><th>Estoque</th><th style="text-align:right;">Ações</th></tr></thead>
+          <thead><tr><th>Nome</th><th>Preço</th><th>Estoque</th><th>Máx. por aluno</th><th style="text-align:right;">Ações</th></tr></thead>
           <tbody id="corpo-produtos"></tbody>
         </table>
 
@@ -646,6 +647,10 @@
         <div class="grid-2">
           <div class="field"><label>Estoque (deixe em branco para ilimitado)</label><input type="number" min="0" id="novo-produto-estoque"></div>
           <div class="field"><label>Descrição (opcional)</label><input type="text" id="novo-produto-descricao"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Máximo por aluno (deixe em branco para sem limite)</label><input type="number" min="1" id="novo-produto-max"></div>
+          <div></div>
         </div>
         <button id="btn-criar-produto" class="btn-ghost btn-small">+ Criar produto</button>
       </div>
@@ -689,6 +694,56 @@
         </div>
         <div class="erro-modal" id="caixa-erro"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- TELA DE CÂMBIO E RELATÓRIO DO CAIXA -->
+  <div id="tela-rel-caixa" class="hidden" style="flex:1; padding:26px 32px; overflow-y:auto; background-image: radial-gradient(rgba(var(--border-rgb),0.18) 1px, transparent 1px); background-size: 22px 22px;">
+    <div class="barra-titulo">
+      <h2 class="brand">💵 Câmbio e vendas do caixa</h2>
+      <button class="btn-ghost btn-small" id="btn-voltar-rel-caixa">← Voltar ao painel</button>
+    </div>
+
+    <div class="cartao" style="border-top-color:var(--sun-2);">
+      <h3>💱 Câmbio WL ⇄ R$</h3>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">
+        Define quantos reais vale 1 WL. É usado <b>somente</b> para calcular o preço em R$ dos produtos na <b>venda avulsa</b> do caixa (preço em WL × câmbio) e para o controle do caixa. Não muda saldos nem preços em WL.
+      </div>
+      <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="field" style="max-width:220px; margin:0;">
+          <label>1 WL = R$</label>
+          <input type="number" step="0.01" min="0.01" id="rc-cambio" class="mono">
+        </div>
+        <button id="btn-salvar-cambio" class="btn-gold btn-small">Salvar câmbio</button>
+        <span id="rc-cambio-aviso" style="font-size:12px; color:var(--ink-soft);"></span>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h3>Período</h3>
+      <div class="field" style="max-width:300px;">
+        <select id="rc-periodo">
+          <option value="1">Hoje</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="">Desde o início</option>
+        </select>
+      </div>
+      <button id="btn-atualizar-rel-caixa" class="btn-gold btn-small">Atualizar</button>
+      <button id="btn-exportar-rel-caixa" class="btn-ghost btn-small hidden" style="margin-left:8px;">⬇️ Exportar CSV</button>
+    </div>
+
+    <div id="rc-resumo" class="grid-2" style="margin-bottom:20px; gap:14px;"></div>
+
+    <div class="cartao">
+      <h3>🧾 Vendas do caixa</h3>
+      <div style="max-height:560px; overflow-y:auto;">
+        <table class="ledger">
+          <thead><tr><th>Data e hora</th><th>Tipo</th><th>Quem</th><th>Itens</th><th style="text-align:right;">Total</th><th>Operador</th></tr></thead>
+          <tbody id="corpo-rel-caixa"></tbody>
+        </table>
+      </div>
+      <div id="rc-limite" class="hidden" style="font-size:12px; color:var(--ink-soft); margin-top:8px;">Mostrando as 1000 vendas mais recentes do período.</div>
     </div>
   </div>
 
@@ -2811,6 +2866,7 @@ function renderTabelaProdutos(){
       <td>${p.nome}${p.ativo ? '' : ' <span style="color:var(--ink-soft); font-size:11px;">(inativo)</span>'}</td>
       <td class="mono">${fmt(p.preco)}</td>
       <td class="mono">${p.estoque === null ? '∞' : p.estoque}</td>
+      <td class="mono">${p.max_por_aluno == null ? '<span style="color:var(--ink-soft);">sem limite</span>' : p.max_por_aluno}</td>
       <td>
         <div class="acoes-linha" style="justify-content:flex-end;">
           <button class="btn-ghost btn-small" data-editar-produto="${p.id}">Editar</button>
@@ -2838,12 +2894,17 @@ async function editarProduto(id){
   if (isNaN(novoPreco) || novoPreco <= 0) { toast('Preço inválido.', true); return; }
   const novoEstoqueTexto = prompt('Estoque (deixe em branco para ilimitado):', produto.estoque ?? '');
   if (novoEstoqueTexto === null) return;
+  const novoMaxTexto = prompt('Máximo por aluno (deixe em branco para sem limite):', produto.max_por_aluno ?? '');
+  if (novoMaxTexto === null) return;
+  const novoMax = novoMaxTexto.trim() === '' ? null : parseInt(novoMaxTexto, 10);
+  if (novoMax !== null && (isNaN(novoMax) || novoMax < 1)) { toast('Máximo por aluno inválido.', true); return; }
   const ativo = confirm('Clique OK para manter o produto ATIVO, ou Cancelar para desativá-lo (deixa de aparecer na loja).');
 
   const { error } = await supabase.from('produtos').update({
     nome: novoNome.trim() || produto.nome,
     preco: novoPreco,
     estoque: novoEstoqueTexto.trim() === '' ? null : parseInt(novoEstoqueTexto, 10),
+    max_por_aluno: novoMax,
     ativo
   }).eq('id', id);
   if (error) { toast('Erro: ' + error.message, true); return; }
@@ -2869,19 +2930,24 @@ $('btn-criar-produto').addEventListener('click', async () => {
   const preco = parseFloat($('novo-produto-preco').value);
   const estoqueTexto = $('novo-produto-estoque').value.trim();
   const descricao = $('novo-produto-descricao').value.trim() || null;
+  const maxTexto = $('novo-produto-max').value.trim();
+  const maxAluno = maxTexto === '' ? null : parseInt(maxTexto, 10);
+  if (maxAluno !== null && (isNaN(maxAluno) || maxAluno < 1)) { toast('Máximo por aluno inválido.', true); return; }
 
   if (!nome) { toast('Informe o nome do produto.', true); return; }
   if (!preco || preco <= 0) { toast('Informe um preço válido.', true); return; }
 
   const { error } = await supabase.from('produtos').insert({
     nome, preco, descricao,
-    estoque: estoqueTexto === '' ? null : parseInt(estoqueTexto, 10)
+    estoque: estoqueTexto === '' ? null : parseInt(estoqueTexto, 10),
+    max_por_aluno: maxAluno
   });
   if (error) { toast('Erro: ' + error.message, true); return; }
 
   $('novo-produto-nome').value = '';
   $('novo-produto-preco').value = '';
   $('novo-produto-estoque').value = '';
+  $('novo-produto-max').value = '';
   $('novo-produto-descricao').value = '';
   await carregarProdutosCache();
   renderTabelaProdutos();
@@ -3218,6 +3284,94 @@ $('btn-exportar-acessos').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'acessos-alunos.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// ---------------------------------------------------------------- CÂMBIO E RELATÓRIO DO CAIXA
+let linhasRelCaixa = [];
+const fmtBRLp = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function dataInicioRelCaixa(){
+  const dias = $('rc-periodo').value;
+  if (dias === '') return null;
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });   // AAAA-MM-DD
+  const d = new Date(hoje + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - (parseInt(dias, 10) - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+$('btn-rel-caixa').addEventListener('click', async () => {
+  $('tela-app').classList.add('hidden');
+  $('tela-rel-caixa').classList.remove('hidden');
+  const podeEditar = ['superadmin', 'diretor'].includes(cargoUsuarioAtual);
+  $('rc-cambio').disabled = !podeEditar;
+  $('btn-salvar-cambio').classList.toggle('hidden', !podeEditar);
+  $('rc-cambio-aviso').textContent = podeEditar ? '' : 'Só superadmin ou diretor podem alterar.';
+  const c = await supabase.rpc('fn_caixa_cambio');
+  if (!c.error && c.data != null) $('rc-cambio').value = Number(c.data);
+  else if (c.error) toast('Erro no câmbio: ' + c.error.message + ' (rodou o fix_venda_avulsa.sql?)', true);
+  await carregarRelCaixa();
+});
+$('btn-voltar-rel-caixa').addEventListener('click', () => {
+  $('tela-rel-caixa').classList.add('hidden');
+  $('tela-app').classList.remove('hidden');
+});
+$('btn-atualizar-rel-caixa').addEventListener('click', carregarRelCaixa);
+$('rc-periodo').addEventListener('change', carregarRelCaixa);
+
+$('btn-salvar-cambio').addEventListener('click', async () => {
+  const v = parseFloat($('rc-cambio').value);
+  if (!v || v <= 0) { toast('Informe um câmbio maior que zero.', true); return; }
+  const { data, error } = await supabase.rpc('fn_definir_cambio', { p_valor: v });
+  if (error) { toast('Erro: ' + error.message.replace(/^.*?: /, ''), true); return; }
+  $('rc-cambio').value = Number(data);
+  toast(`✅ Câmbio salvo: 1 WL = ${fmtBRLp(data)}. Vale para as próximas vendas avulsas.`);
+});
+
+async function carregarRelCaixa(){
+  const { data, error } = await supabase.rpc('fn_relatorio_caixa', { p_inicio: dataInicioRelCaixa(), p_fim: null });
+  if (error) { toast('Erro no relatório: ' + error.message.replace(/^.*?: /, '') + ' (rodou o fix_venda_avulsa.sql?)', true); return; }
+  linhasRelCaixa = data || [];
+  const av = linhasRelCaixa.filter(l => l.tipo === 'avulsa');
+  const al = linhasRelCaixa.filter(l => l.tipo === 'aluno');
+  const somaBRL = av.reduce((t, l) => t + Number(l.total_brl || 0), 0);
+  const somaWLav = av.reduce((t, l) => t + Number(l.total_wl || 0), 0);
+  const somaWL = al.reduce((t, l) => t + Number(l.total_wl || 0), 0);
+  const cartoes = [
+    { t: 'Vendas avulsas (R$)', v: fmtBRLp(somaBRL), c: 'green', i: '💵' },
+    { t: 'Nº de vendas avulsas', v: av.length, c: 'mint', i: '🧾' },
+    { t: 'Vendas a alunos (WL)', v: fmt(somaWL), c: 'violet', i: '🎒' },
+    { t: 'Nº de vendas a alunos', v: al.length, c: 'pink', i: '🛒' },
+    { t: 'Avulsas em valor WL', v: fmt(somaWLav), c: 'sun-2', i: '💱' }
+  ];
+  $('rc-resumo').innerHTML = cartoes.map(c => `
+    <div class="cartao" style="margin-bottom:0; border-top-color:var(--${c.c}); display:flex; align-items:center; gap:12px;">
+      <div style="font-size:26px;">${c.i}</div>
+      <div><div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.06em;">${c.t}</div>
+      <div class="mono" style="font-size:21px; font-weight:700; color:var(--${c.c});">${c.v}</div></div>
+    </div>`).join('');
+  $('corpo-rel-caixa').innerHTML = linhasRelCaixa.map(l => `
+    <tr>
+      <td class="mono" style="font-size:12px;">${fmtDataHora(l.criado_em)}</td>
+      <td>${l.tipo === 'avulsa' ? '💵 Avulsa' : '🎒 Aluno'}</td>
+      <td>${escAc(l.quem)}</td>
+      <td style="font-size:12.5px;">${escAc(l.itens)}</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${l.tipo === 'avulsa' ? fmtBRLp(l.total_brl) + `<div style="font-size:11px; font-weight:400; color:var(--ink-soft);">${fmt(l.total_wl)} · 1 WL = ${fmtBRLp(l.cambio)}</div>` : fmt(l.total_wl)}</td>
+      <td style="font-size:12px;">${escAc(l.usuario || '')}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--ink-soft);">Nenhuma venda no período.</td></tr>';
+  $('btn-exportar-rel-caixa').classList.toggle('hidden', !linhasRelCaixa.length);
+  $('rc-limite').classList.toggle('hidden', linhasRelCaixa.length < 1000);
+}
+
+$('btn-exportar-rel-caixa').addEventListener('click', () => {
+  const csv = [['Data e hora','Tipo','Quem','Itens','Total em R$','Total em WL','Câmbio (R$ por WL)','Operador']]
+    .concat(linhasRelCaixa.map(l => [fmtDataHora(l.criado_em), l.tipo === 'avulsa' ? 'Avulsa (R$)' : 'Aluno (WL)', l.quem, l.itens,
+      l.total_brl != null ? String(l.total_brl).replace('.', ',') : '', String(l.total_wl).replace('.', ','), l.cambio != null ? String(l.cambio).replace('.', ',') : '', l.usuario || '']))
+    .map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'vendas-do-caixa.csv';
   a.click();
   URL.revokeObjectURL(a.href);
 });
