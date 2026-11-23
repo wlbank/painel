@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WL Bank — Caixa</title>
+<script>
+  // Tema: usa o mesmo do painel (claro / escuro / automático). Temas especiais do painel aparecem aqui como escuro.
+  (function(){
+    const salvo = localStorage.getItem('wlbank-tema') || 'sistema';
+    const sistemaEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const escuro = ['escuro','tropical','cidade'].includes(salvo) || (salvo === 'sistema' && sistemaEscuro);
+    document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#8AD8F2; --dots:rgba(255,255,255,.55);
+    --card:#FFFFFF; --card-2:#FFF4CF; --paper:#2A1A5E; --soft:#5E4F96; --line:#2A1A5E;
+    --sun:#FFD23F; --mint:#19C79A; --mint-ink:#0B7A57; --coral:#FF5A4F; --red:#B5251B; --violet:#6C4DFF;
+  }
+  [data-theme="dark"]{
+    --bg:#2B1B76; --dots:rgba(255,255,255,.07);
+    --card:#3B2A96; --card-2:#4A36B0; --paper:#FFF8E7; --soft:#CFC4FF; --line:#120A38;
+    --sun:#FFD23F; --mint:#5CF0BE; --mint-ink:#5CF0BE; --coral:#FF7A70; --red:#FF8E86; --violet:#B8A8FF;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; min-height:100vh; background-color:var(--bg);
+    background-image:radial-gradient(var(--dots) 3px, transparent 3.5px); background-size:34px 34px;
+    color:var(--paper); font-family:'Nunito',system-ui,sans-serif; font-weight:700;
+  }
+  .hidden{ display:none !important; }
+  button, input, select{ font-family:inherit; }
+  button{ touch-action:manipulation; }
+
+  /* ---- topo ---- */
+  .topo{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; }
+  .marca{ display:flex; align-items:center; gap:12px; }
+  .moeda{ width:48px; height:48px; border-radius:50%; background:var(--sun); border:3px solid var(--line); box-shadow:0 4px 0 var(--line); display:grid; place-items:center; font-family:'Lilita One',sans-serif; font-size:18px; color:#2A1A5E; }
+  .marca h1{ margin:0; font-family:'Lilita One',sans-serif; font-weight:400; font-size:30px; line-height:1; }
+  .marca small{ display:block; font-size:12px; color:var(--soft); margin-top:2px; }
+  .topo-dir{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:14px; }
+
+  .btn{ background:var(--card); color:var(--paper); border:3px solid var(--line); border-radius:16px; padding:10px 16px; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 0 var(--line); transition:transform .08s, box-shadow .08s; text-decoration:none; display:inline-block; }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--line); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  select.btn{ padding-right:8px; }
+  button:focus-visible, input:focus-visible, select:focus-visible{ outline:4px solid var(--violet); outline-offset:2px; }
+
+  /* ---- layout ---- */
+  .wrap{ max-width:1300px; margin:0 auto; padding:4px 20px 120px; }
+  .titulo{ margin:4px 0 14px; font-family:'Lilita One',sans-serif; font-weight:400; font-size:32px; }
+  .cab-etapa{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+  .cab-etapa .titulo{ margin:0; }
+  .btn-grande{ font-size:20px; padding:14px 20px; }
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:18px; align-items:start; }
+  .ficha{ position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; background:var(--mint); color:#0F2A22; border:3px solid var(--line); border-radius:24px; box-shadow:0 6px 0 var(--line); padding:14px 20px; margin-bottom:18px; }
+  .ficha .f-turma{ font-size:15px; font-weight:900; }
+  .ficha .f-nome{ font-family:'Lilita One',sans-serif; font-size:34px; line-height:1.05; }
+  .ficha .f-saldo{ text-align:right; }
+  .ficha .f-saldo small{ display:block; font-size:14px; font-weight:900; }
+  .ficha .f-saldo b{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:44px; line-height:1; }
+  .ficha .f-saldo .f-det{ font-size:13px; font-weight:800; }
+  .ficha.ruim{ background:var(--coral); }
+  .secao{ background:var(--card); border:3px solid var(--line); border-radius:24px; box-shadow:0 6px 0 var(--line); padding:16px 18px 18px; margin-bottom:18px; }
+  .secao h2{ margin:0 0 12px; font-family:'Lilita One',sans-serif; font-weight:400; font-size:24px; display:flex; align-items:center; gap:10px; }
+  .passo{ width:34px; height:34px; border-radius:50%; background:var(--sun); color:#2A1A5E; border:3px solid var(--line); display:grid; place-items:center; font-size:18px; }
+  .dica{ color:var(--soft); font-size:15px; padding:8px 2px; }
+
+  /* ---- botões grandes ---- */
+  .grade{ display:grid; gap:12px; }
+  .g-turmas{ grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+  .g-alunos{ grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); padding:4px 6px 10px 2px; }
+  .g-produtos{ grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+  .big{ position:relative; background:var(--card-2); color:var(--paper); border:3px solid var(--line); border-radius:20px; box-shadow:0 5px 0 var(--line); cursor:pointer; text-align:left; padding:12px 14px; transition:transform .08s, box-shadow .08s; }
+  .big:active{ transform:translateY(4px); box-shadow:0 1px 0 var(--line); }
+  .big:disabled{ opacity:.45; cursor:not-allowed; }
+  .turma{ min-height:120px; text-align:center; font-family:'Lilita One',sans-serif; font-size:36px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+  .turma small{ font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; color:var(--soft); }
+  .turma.sel{ background:var(--sun); color:#2A1A5E; }
+  .aluno{ min-height:96px; display:flex; flex-direction:column; justify-content:center; gap:3px; padding-left:62px; }
+  .aluno .num{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; background:var(--card); border:3px solid var(--line); display:grid; place-items:center; font-family:'Lilita One',sans-serif; font-size:16px; }
+  .aluno .nome{ font-size:19px; font-weight:900; line-height:1.15; }
+  .aluno .sub{ font-size:13px; color:var(--soft); }
+  .aluno.sel{ background:var(--mint); color:#0F2A22; }
+  .aluno.sel .sub{ color:#0F2A22; }
+  .aluno.sel .num{ background:#fff; color:#2A1A5E; }
+  .produto{ min-height:112px; display:flex; flex-direction:column; justify-content:space-between; gap:6px; }
+  .produto .pn{ font-size:19px; font-weight:900; line-height:1.15; }
+  .produto .pp{ font-family:'Lilita One',sans-serif; font-size:24px; color:var(--mint-ink); }
+  .produto .pe{ font-size:12px; color:var(--soft); }
+  .produto:disabled .pe{ color:var(--red); font-weight:900; }
+  .produto .qtd{ position:absolute; right:10px; top:10px; min-width:38px; height:38px; border-radius:19px; padding:0 8px; background:var(--sun); color:#2A1A5E; border:3px solid var(--line); display:grid; place-items:center; font-family:'Lilita One',sans-serif; font-size:18px; }
+
+  .busca{ width:100%; font-size:20px; font-weight:800; padding:14px 16px; border:3px solid var(--line); border-radius:18px; background:var(--card); color:var(--paper); margin-bottom:12px; }
+  .busca::placeholder{ color:var(--soft); }
+
+  /* ---- carrinho ---- */
+  .carrinho{ position:sticky; top:150px; margin-bottom:0; }
+  .cli{ display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--card-2); border:3px solid var(--line); border-radius:16px; margin-bottom:8px; }
+  .cli .cn{ flex:1; min-width:0; font-weight:900; font-size:16px; line-height:1.15; }
+  .cli .cs{ font-size:13px; color:var(--soft); }
+  .qbtn{ width:48px; height:48px; border-radius:14px; border:3px solid var(--line); background:var(--card); color:var(--paper); font-size:26px; font-weight:900; line-height:1; cursor:pointer; box-shadow:0 3px 0 var(--line); }
+  .qbtn:active{ transform:translateY(2px); box-shadow:0 1px 0 var(--line); }
+  .qn{ min-width:28px; text-align:center; font-family:'Lilita One',sans-serif; font-size:22px; }
+  .aluno-sel{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--mint); color:#0F2A22; border:3px solid var(--line); border-radius:16px; padding:10px 12px; margin-bottom:12px; }
+  .aluno-sel .an{ font-size:18px; font-weight:900; line-height:1.15; }
+  .aluno-sel .as{ font-size:13px; }
+  .aluno-vazio{ background:var(--card-2); color:var(--soft); border:3px dashed var(--line); border-radius:16px; padding:14px; margin-bottom:12px; text-align:center; }
+  .linha-total{ display:flex; justify-content:space-between; align-items:baseline; margin:12px 4px 4px; }
+  .linha-total .t{ font-size:16px; color:var(--soft); }
+  .linha-total .v{ font-family:'Lilita One',sans-serif; font-size:40px; }
+  .depois{ margin:0 4px 12px; font-size:15px; }
+  .depois.ruim{ color:var(--red); font-weight:900; }
+  .depois.ok{ color:var(--mint-ink); }
+  .finalizar{ width:100%; font-family:'Lilita One',sans-serif; font-weight:400; font-size:28px; padding:20px 10px; background:var(--mint); color:#0F2A22; border:3px solid var(--line); border-radius:22px; box-shadow:0 7px 0 var(--line); cursor:pointer; }
+  .finalizar:active{ transform:translateY(5px); box-shadow:0 2px 0 var(--line); }
+  .finalizar:disabled{ background:var(--card-2); color:var(--soft); opacity:.8; cursor:not-allowed; box-shadow:0 4px 0 var(--line); }
+  .limpar{ width:100%; margin-top:12px; }
+  .ult{ margin-top:16px; font-size:13px; color:var(--soft); }
+  .ult b{ color:var(--paper); }
+  .ult li{ margin:3px 0; }
+  .ult ul{ margin:6px 0 0; padding-left:18px; }
+
+  /* ---- janelas ---- */
+  .overlay{ position:fixed; inset:0; background:rgba(26,16,66,.78); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .modal{ background:var(--card); color:var(--paper); border:3px solid var(--line); border-radius:28px; box-shadow:0 8px 0 var(--line); width:100%; max-width:520px; padding:26px 24px; text-align:center; }
+  .modal h3{ margin:0 0 6px; font-family:'Lilita One',sans-serif; font-weight:400; font-size:30px; }
+  .modal .grande{ font-family:'Lilita One',sans-serif; font-size:52px; line-height:1.1; margin:8px 0; }
+  .modal p{ margin:6px 0; font-size:17px; }
+  .modal .erro{ color:var(--red); font-weight:900; min-height:22px; }
+  .modal .acoes{ display:grid; gap:12px; margin-top:16px; }
+  .modal .confirmar{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:28px; padding:20px; background:var(--mint); color:#0F2A22; border:3px solid var(--line); border-radius:22px; box-shadow:0 7px 0 var(--line); cursor:pointer; }
+  .modal .confirmar:active{ transform:translateY(5px); box-shadow:0 2px 0 var(--line); }
+  .modal .confirmar:disabled{ opacity:.6; }
+  .modal .voltar{ font-size:20px; padding:16px; }
+  .ok-icone{ font-size:78px; line-height:1; }
+
+  .toast{ position:fixed; bottom:96px; left:16px; right:16px; max-width:420px; margin:0 auto; background:var(--mint); color:#0F2A22; border:3px solid var(--line); border-radius:18px; padding:14px 18px; font-size:16px; font-weight:800; box-shadow:0 5px 0 var(--line); z-index:80; text-align:center; }
+  .toast.erro{ background:var(--coral); color:#2A1A5E; }
+
+  /* ---- entrada ---- */
+  .login{ max-width:420px; margin:9vh auto 0; padding:0 16px; }
+  .login .modal{ text-align:left; }
+  .login label{ display:block; font-size:14px; margin:12px 0 4px; }
+  .login input{ width:100%; font-size:18px; padding:14px; border:3px solid var(--line); border-radius:16px; background:var(--card); color:var(--paper); font-weight:800; }
+
+  /* ---- barra fixa (celular/tablet pequeno) ---- */
+  .barra-fixa{ display:none; position:fixed; left:0; right:0; bottom:0; z-index:40; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:3px solid var(--line); gap:12px; align-items:center; }
+  .barra-fixa .bt{ flex:1; line-height:1.1; }
+  .barra-fixa .bt small{ display:block; color:var(--soft); font-size:12px; }
+  .barra-fixa .bt b{ font-family:'Lilita One',sans-serif; font-weight:400; font-size:26px; }
+  .barra-fixa .finalizar{ width:auto; flex:1.3; font-size:22px; padding:14px 8px; }
+
+  @media (max-width:980px){
+    .layout{ grid-template-columns:1fr; }
+    .carrinho{ position:static; }
+    .barra-fixa{ display:flex; }
+    .carrinho .finalizar{ display:none; }
+    .ficha .f-nome{ font-size:28px; } .ficha .f-saldo b{ font-size:36px; }
+  }
+  @media (max-width:600px){
+    .topo{ padding:10px 12px; } .wrap{ padding-left:12px; padding-right:12px; }
+    .g-turmas{ grid-template-columns:repeat(2,1fr); } .g-produtos{ grid-template-columns:1fr 1fr; } .g-alunos{ grid-template-columns:1fr; }
+    .produto .pn{ font-size:17px; } .produto .pp{ font-size:22px; }
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     CONFIGURAÇÃO — cole aqui os mesmos dados do painel (Project Settings > API)
+     ===================================================================== -->
+<script>
+  const CONFIG = {
+    SUPABASE_URL: "COLE_AQUI_A_URL_DO_SEU_PROJETO_SUPABASE",       // ex: https://xxxxx.supabase.co
+    SUPABASE_ANON_KEY: "COLE_AQUI_A_CHAVE_ANON_PUBLIC_DO_SUPABASE" // encontrada em Project Settings > API
+  };
+</script>
+
+<!-- ENTRAR -->
+<div id="tela-login" class="login hidden">
+  <div class="modal">
+    <h3 style="text-align:center;">🛒 Caixa WL Bank</h3>
+    <p style="text-align:center; color:var(--soft);">Entre com o mesmo e-mail e senha do painel.</p>
+    <form id="form-login">
+      <label for="login-email">E-mail</label>
+      <input id="login-email" type="email" autocomplete="username" required>
+      <label for="login-senha">Senha</label>
+      <input id="login-senha" type="password" autocomplete="current-password" required>
+      <p class="erro" id="erro-login"></p>
+      <div class="acoes"><button class="confirmar" type="submit">Entrar</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- CAIXA -->
+<div id="tela-caixa" class="hidden">
+  <header class="topo">
+    <div class="marca">
+      <div class="moeda">WL</div>
+      <div><h1>Caixa</h1><small id="quem">—</small></div>
+    </div>
+    <div class="topo-dir">
+      <select id="seletor-tema" class="btn" aria-label="Tema">
+        <option value="sistema">🖥️ Auto</option>
+        <option value="claro">☀️ Claro</option>
+        <option value="escuro">🌙 Escuro</option>
+      </select>
+      <a class="btn" id="link-painel" href="painel-professor.html">← Painel</a>
+      <button class="btn" id="btn-sair">Sair</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="et-turmas">
+      <h2 class="titulo">1️⃣ Escolha a turma</h2>
+      <div id="g-turmas" class="grade g-turmas"></div>
+      <div class="ult" id="ult"></div>
+    </section>
+
+    <section id="et-alunos" class="hidden">
+      <div class="cab-etapa">
+        <button class="btn btn-grande" id="btn-voltar-turmas">← Turmas</button>
+        <h2 class="titulo" id="tit-alunos">2️⃣ Escolha o aluno</h2>
+      </div>
+      <input id="busca" class="busca" type="search" placeholder="🔎 Procurar pelo nome ou número…" autocomplete="off">
+      <div id="g-alunos" class="grade g-alunos"></div>
+    </section>
+
+    <section id="et-venda" class="hidden">
+      <div class="ficha" id="ficha"></div>
+      <div class="layout">
+        <div id="g-produtos" class="grade g-produtos"></div>
+        <aside class="secao carrinho" id="carrinho">
+          <h2>🛒 Venda</h2>
+          <div id="itens"></div>
+          <div class="linha-total"><span class="t">Total</span><span class="v" id="total">WL 0,00</span></div>
+          <div class="depois" id="depois"></div>
+          <button class="finalizar" id="btn-finalizar" disabled>✅ Finalizar venda</button>
+          <button class="btn limpar" id="btn-limpar">🧹 Limpar itens</button>
+          <button class="btn limpar" id="btn-trocar">👤 Trocar aluno</button>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="barra-fixa" id="barra-fixa">
+    <div class="bt"><small id="bf-info">Nenhum item</small><b id="bf-total">WL 0,00</b></div>
+    <button class="finalizar" id="btn-finalizar-2" disabled>✅ Finalizar</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+<div id="janela" class="hidden"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v) => 'WL ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const cents = (v) => Math.round(Number(v) * 100);
+
+let somenteVendedor = false;
+let turmas = [], alunos = [], produtos = [];
+let etapa = 'turmas';
+let turmaId = null, alunoId = null, busca = '';
+const carrinho = new Map();          // produto_id -> quantidade
+const vendas = [];                   // últimas vendas desta sessão
+let vendendo = false, timerOk = null;
+
+// ---------------------------------------------------------------- aviso rápido
+let tToast;
+function toast(msg, erro = false){
+  const el = $('toast');
+  el.textContent = msg; el.className = 'toast' + (erro ? ' erro' : '');
+  clearTimeout(tToast); tToast = setTimeout(() => el.classList.add('hidden'), erro ? 5000 : 2500);
+}
+
+// ---------------------------------------------------------------- tema
+const sel = $('seletor-tema');
+const prefTema = localStorage.getItem('wlbank-tema') || 'sistema';
+sel.value = ['sistema','claro','escuro'].includes(prefTema) ? prefTema : 'escuro';
+sel.addEventListener('change', () => {
+  try { localStorage.setItem('wlbank-tema', sel.value); } catch (e) {}
+  const escuro = sel.value === 'escuro' || (sel.value === 'sistema' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+});
+
+// ---------------------------------------------------------------- entrada
+$('form-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('erro-login').textContent = '';
+  const { error } = await supabase.auth.signInWithPassword({ email: $('login-email').value.trim(), password: $('login-senha').value });
+  if (error) { $('erro-login').textContent = 'E-mail ou senha inválidos.'; return; }
+  await abrirCaixa();
+});
+$('btn-sair').addEventListener('click', async () => { await supabase.auth.signOut(); location.reload(); });
+
+async function abrirCaixa(){
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { $('tela-login').classList.remove('hidden'); $('tela-caixa').classList.add('hidden'); return; }
+  $('tela-login').classList.add('hidden');
+  $('tela-caixa').classList.remove('hidden');
+  const cargo = session.user.user_metadata?.cargo || 'professor';
+  somenteVendedor = cargo === 'vendedor';
+  $('link-painel').classList.toggle('hidden', somenteVendedor);
+  $('quem').textContent = session.user.email + ' · ' + cargo;
+  await carregarTudo();
+  irPara('turmas');
+}
+
+// ---------------------------------------------------------------- dados
+async function carregarProdutos(){
+  const { data, error } = await supabase.rpc('fn_caixa_produtos');
+  if (error) { toast('Erro ao carregar produtos: ' + error.message, true); return; }
+  produtos = data || [];
+}
+async function carregarTudo(){
+  const rt = await supabase.rpc('fn_caixa_turmas');
+  if (rt.error) { toast('Erro ao carregar turmas: ' + rt.error.message, true); return; }
+  turmas = (rt.data || []).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+
+  // alunos em páginas de 1000 (limite do Supabase por consulta, vale também para rpc)
+  alunos = [];
+  for (let ini = 0; ini < 20000; ini += 1000) {
+    const { data, error } = await supabase.rpc('fn_caixa_alunos').range(ini, ini + 999);
+    if (error) { toast('Erro ao carregar alunos: ' + error.message, true); break; }
+    alunos.push(...data);
+    if (data.length < 1000) break;
+  }
+  await carregarProdutos();
+}
+
+const saldoDe = (a) => (a && a.saldo != null ? Number(a.saldo) : null);
+const nomeTurma = (id) => turmas.find(t => t.id === id)?.nome || '';
+const alunoAtual = () => alunos.find(a => a.id === alunoId) || null;
+
+// ---------------------------------------------------------------- desenho
+const totalCents = () => [...carrinho].reduce((s, [id, q]) => s + cents(produtos.find(p => p.id === id)?.preco || 0) * q, 0);
+const nItens = () => [...carrinho.values()].reduce((x, y) => x + y, 0);
+const restoCents = () => { const s = saldoDe(alunoAtual()); return s == null ? Infinity : cents(s) - totalCents(); };
+
+function render(){
+  $('et-turmas').classList.toggle('hidden', etapa !== 'turmas');
+  $('et-alunos').classList.toggle('hidden', etapa !== 'alunos');
+  $('et-venda').classList.toggle('hidden', etapa !== 'venda');
+  $('barra-fixa').classList.toggle('hidden', etapa !== 'venda');
+  if (etapa === 'turmas') renderTurmas();
+  if (etapa === 'alunos') renderAlunos();
+  if (etapa === 'venda') { renderFicha(); renderProdutos(); renderCarrinho(); }
+}
+function irPara(e){ etapa = e; render(); window.scrollTo(0, 0); }
+
+function renderTurmas(){
+  $('g-turmas').innerHTML = turmas.map(t => {
+    const n = alunos.filter(a => a.turma_id === t.id).length;
+    return `<button class="big turma" data-turma="${t.id}">${esc(t.nome)}<small>${n} aluno${n === 1 ? '' : 's'}</small></button>`;
+  }).join('') || '<div class="dica">Nenhuma turma cadastrada.</div>';
+  $('ult').innerHTML = vendas.length
+    ? `<b>Últimas vendas</b><ul>${vendas.slice(0, 5).map(v => `<li>${v.hora} · ${esc(v.nome)} · <b>${fmt(v.total)}</b></li>`).join('')}</ul>` : '';
+}
+
+function alunosFiltrados(){
+  const q = norm(busca);
+  let lista = alunos.filter(a => a.turma_id === turmaId);
+  if (q) lista = lista.filter(a => norm(a.nome).includes(q) || (/^\d+$/.test(q) && String(a.numero ?? '') === q));
+  return lista.sort((a, b) => (a.numero ?? 1e9) - (b.numero ?? 1e9) || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+function renderAlunos(){
+  $('tit-alunos').textContent = '2️⃣ ' + nomeTurma(turmaId) + ' — escolha o aluno';
+  const lista = alunosFiltrados();
+  $('g-alunos').innerHTML = lista.length ? lista.map(a => {
+    const s = saldoDe(a);
+    return `<button class="big aluno" data-aluno="${a.id}"><span class="num">${a.numero ?? '–'}</span><span class="nome">${esc(a.nome)}</span>${s != null ? `<span class="sub">Saldo ${fmt(s)}</span>` : ''}</button>`;
+  }).join('') : '<div class="dica">Nenhum aluno encontrado.</div>';
+}
+
+function renderFicha(){
+  const a = alunoAtual(); if (!a) return;
+  const s = saldoDe(a), tc = totalCents();
+  const resto = s == null ? null : (cents(s) - tc) / 100;
+  $('ficha').classList.toggle('ruim', resto != null && resto < 0);
+  $('ficha').innerHTML = `<div><div class="f-turma">${esc(nomeTurma(a.turma_id))}${a.numero ? ' · nº ' + a.numero : ''}</div><div class="f-nome">${esc(a.nome)}</div></div>
+    ${s != null ? `<div class="f-saldo"><small>SALDO DISPONÍVEL</small><b>${fmt(resto)}</b><div class="f-det">${tc ? `${fmt(s)} − ${fmt(tc / 100)}` : 'ainda sem compras'}</div></div>` : ''}`;
+}
+
+function renderProdutos(){
+  const resto = restoCents();
+  $('g-produtos').innerHTML = produtos.map(p => {
+    const q = carrinho.get(p.id) || 0;
+    const esgotado = p.estoque != null && p.estoque - q <= 0;
+    const semSaldo = cents(p.preco) > resto;
+    const bloq = esgotado || semSaldo;
+    const info = esgotado ? (q ? 'Acabou o estoque' : 'Esgotado') : semSaldo ? 'Saldo insuficiente' : (p.estoque != null ? p.estoque + ' em estoque' : '&nbsp;');
+    return `<button class="big produto" data-produto="${p.id}" ${bloq ? 'disabled' : ''}>${q ? `<span class="qtd">×${q}</span>` : ''}<span class="pn">${esc(p.nome)}</span><span class="pp">${fmt(p.preco)}</span><span class="pe">${info}</span></button>`;
+  }).join('') || '<div class="dica">Nenhum produto ativo. Cadastre produtos na aba Loja do painel.</div>';
+}
+
+function renderCarrinho(){
+  const linhas = [...carrinho].map(([id, q]) => {
+    const p = produtos.find(x => x.id === id); if (!p) return '';
+    return `<div class="cli"><div class="cn">${esc(p.nome)}<div class="cs">${fmt(p.preco)} cada · ${fmt(cents(p.preco) * q / 100)}</div></div>
+      <button class="qbtn" data-menos="${id}" aria-label="Tirar um">−</button><span class="qn">${q}</span><button class="qbtn" data-mais="${id}" aria-label="Adicionar um">+</button></div>`;
+  }).join('');
+  $('itens').innerHTML = linhas || '<div class="dica" style="text-align:center;">Toque nos produtos para adicionar.</div>';
+
+  const tc = totalCents(), n = nItens(), resto = restoCents();
+  $('total').textContent = fmt(tc / 100);
+  $('bf-total').textContent = fmt(tc / 100);
+  $('bf-info').textContent = n ? `${n} item(ns)` : 'Nenhum item';
+  const dep = $('depois');
+  if (n && resto !== Infinity) {
+    if (resto < 0) { dep.className = 'depois ruim'; dep.textContent = `⚠️ Saldo insuficiente (faltam ${fmt(-resto / 100)})`; }
+    else { dep.className = 'depois ok'; dep.textContent = `Saldo depois da compra: ${fmt(resto / 100)}`; }
+  } else { dep.className = 'depois'; dep.textContent = ''; }
+  const pode = n > 0 && resto >= 0 && !vendendo;
+  $('btn-finalizar').disabled = !pode;
+  $('btn-finalizar-2').disabled = !pode;
+}
+
+// ---------------------------------------------------------------- ações
+function atualizarVenda(){ renderFicha(); renderProdutos(); renderCarrinho(); }
+function somar(id, d){
+  const p = produtos.find(x => x.id === id); if (!p) return;
+  const novo = (carrinho.get(id) || 0) + d;
+  if (novo <= 0) carrinho.delete(id);
+  else if (p.estoque != null && novo > p.estoque) { toast(`Só há ${p.estoque} em estoque de "${p.nome}".`, true); return; }
+  else if (d > 0 && cents(p.preco) > restoCents()) { toast('Saldo insuficiente para esse item.', true); return; }
+  else carrinho.set(id, novo);
+  atualizarVenda();
+}
+function novaVenda(){ carrinho.clear(); alunoId = null; turmaId = null; busca = ''; $('busca').value = ''; irPara('turmas'); }
+
+$('g-turmas').addEventListener('click', (e) => { const b = e.target.closest('[data-turma]'); if (!b) return; turmaId = b.dataset.turma; busca = ''; $('busca').value = ''; irPara('alunos'); });
+$('g-alunos').addEventListener('click', (e) => { const b = e.target.closest('[data-aluno]'); if (!b) return; alunoId = b.dataset.aluno; carrinho.clear(); irPara('venda'); });
+$('g-produtos').addEventListener('click', (e) => { const b = e.target.closest('[data-produto]'); if (b) somar(b.dataset.produto, 1); });
+$('carrinho').addEventListener('click', (e) => {
+  const m = e.target.closest('[data-mais]'), n = e.target.closest('[data-menos]');
+  if (m) somar(m.dataset.mais, 1); else if (n) somar(n.dataset.menos, -1);
+});
+$('btn-limpar').addEventListener('click', () => { carrinho.clear(); atualizarVenda(); });
+$('btn-trocar').addEventListener('click', () => { carrinho.clear(); alunoId = null; irPara('alunos'); });
+$('btn-voltar-turmas').addEventListener('click', () => { turmaId = null; irPara('turmas'); });
+$('busca').addEventListener('input', (e) => { busca = e.target.value; renderAlunos(); });
+$('busca').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { const l = alunosFiltrados(); if (l.length === 1) { alunoId = l[0].id; carrinho.clear(); irPara('venda'); } }
+});
+$('btn-finalizar').addEventListener('click', abrirConfirmacao);
+$('btn-finalizar-2').addEventListener('click', abrirConfirmacao);
+
+// ---------------------------------------------------------------- confirmar e vender
+function fecharJanela(){ $('janela').classList.add('hidden'); $('janela').innerHTML = ''; clearTimeout(timerOk); }
+
+function abrirConfirmacao(){
+  const a = alunoAtual(); if (!a || !carrinho.size || vendendo) return;
+  const total = totalCents() / 100;
+  const resumo = [...carrinho].map(([id, q]) => `${q}× ${esc(produtos.find(p => p.id === id)?.nome || '')}`).join(', ');
+  $('janela').className = '';
+  $('janela').innerHTML = `<div class="overlay"><div class="modal" role="dialog" aria-modal="true">
+    <h3>Confirmar venda</h3>
+    <p>${esc(a.nome)} · ${esc(nomeTurma(a.turma_id))}</p>
+    <div class="grande">${fmt(total)}</div>
+    <p style="color:var(--soft); font-size:15px;">${resumo}</p>
+    ${saldoDe(a) != null ? `<p>Saldo depois: <b>${fmt(restoCents() / 100)}</b></p>` : ''}
+    <p class="erro" id="erro-venda"></p>
+    <div class="acoes"><button class="confirmar" id="btn-confirmar">✅ Confirmar</button><button class="btn voltar" id="btn-voltar">↩️ Voltar</button></div>
+  </div></div>`;
+  $('btn-confirmar').focus();
+  $('btn-voltar').addEventListener('click', fecharJanela);
+  $('btn-confirmar').addEventListener('click', vender);
+}
+
+async function vender(){
+  if (vendendo) return;
+  const a = alunoAtual(); if (!a || !carrinho.size) return;
+  vendendo = true;
+  const btn = $('btn-confirmar'); btn.disabled = true; btn.textContent = 'Vendendo…';
+  const itens = [...carrinho].map(([produto_id, quantidade]) => ({ produto_id, quantidade }));
+  const total = totalCents() / 100;
+  const { data, error } = await supabase.rpc('fn_professor_vender', { p_aluno_id: a.id, p_itens: itens });
+  vendendo = false;
+  if (error) {
+    btn.disabled = false; btn.textContent = '✅ Confirmar';
+    $('erro-venda').textContent = '⚠️ ' + error.message.replace(/^.*?: /, '');
+    return;
+  }
+  const novoSaldo = data?.novo_saldo;
+  if (novoSaldo != null) a.saldo = novoSaldo;
+  vendas.unshift({ nome: a.nome, total, hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
+  mostrarSucesso(a, total, novoSaldo);
+  await carregarProdutos();
+  novaVenda();          // volta para a tela inicial (turmas)
+}
+
+function mostrarSucesso(a, total, novoSaldo){
+  $('janela').className = '';
+  $('janela').innerHTML = `<div class="overlay"><div class="modal" role="dialog" aria-modal="true">
+    <div class="ok-icone">✅</div>
+    <h3>Venda concluída!</h3>
+    <p>${esc(a.nome)} pagou <b>${fmt(total)}</b></p>
+    ${novoSaldo != null ? `<p style="color:var(--soft);">Novo saldo: ${fmt(novoSaldo)}</p>` : ''}
+    <div class="acoes"><button class="confirmar" id="btn-proxima">➡️ Próxima venda</button></div>
+  </div></div>`;
+  $('btn-proxima').focus();
+  $('btn-proxima').addEventListener('click', fecharJanela);
+  timerOk = setTimeout(fecharJanela, 6000);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('janela').classList.contains('hidden')) fecharJanela();
+});
+
+// ---------------------------------------------------------------- início
+supabase.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT') location.reload(); });
+abrirCaixa();
+</script>
+</body>
+</html>
