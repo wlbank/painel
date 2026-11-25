@@ -849,6 +849,16 @@
       <div id="rel-saldos">—</div>
     </div>
 
+    <div class="cartao" style="border-top-color:var(--mint);">
+      <h3>👩‍🎓 Por aluno: saldo, créditos, débitos e taxas</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        <input type="search" id="rel-aluno-busca" placeholder="🔎 Procurar aluno…" style="max-width:260px;">
+        <button id="btn-exportar-alunos" class="btn-ghost btn-small">⬇️ Exportar CSV</button>
+        <span style="font-size:12px; color:var(--ink-soft);">Clique no título de uma coluna para ordenar. Os valores seguem o período, a turma e o tipo escolhidos acima; o saldo é o de hoje.</span>
+      </div>
+      <div id="rel-por-aluno" style="max-height:520px; overflow:auto;">—</div>
+    </div>
+
     <div class="cartao" style="border-top-color:var(--sun);">
       <h3>🧮 Composição das movimentações no período</h3>
       <div id="rel-composicao">—</div>
@@ -2507,6 +2517,7 @@ async function gerarRelatorio(){
   try { contasSaldo = await buscarSaldosAtuais(nomeTurmaFiltro); }
   catch (e) { toast('Não foi possível carregar os saldos atuais: ' + e.message, true); }
   renderSaldosAlunos(contasSaldo);
+  prepararPorAluno(ultimoRelatorio, contasSaldo);
   renderComposicao(ultimoRelatorio);
   renderPorTurma(ultimoRelatorio, contasSaldo);
   renderGraficoTaxas(ultimoRelatorio);
@@ -2716,6 +2727,82 @@ function renderSaldosAlunos(contas){
     ${top.map((c, i) => `<tr><td>${i + 1}</td><td>${c.nome}${c.numero ? ' (Nº ' + c.numero + ')' : ''}</td><td>${c.turma}</td><td class="mono" style="text-align:right;">${fmt(c.saldo)}</td></tr>`).join('')}
     </tbody></table>`;
 }
+
+// ---- Tabela por aluno: saldo de hoje + créditos, débitos, juros, taxas e bônus do período
+let linhasPorAluno = [], ordemPorAluno = { col: 'saldo', dir: -1 };
+function prepararPorAluno(linhas, contas){
+  const chave = (turma, numero, nome) => [turma || '', numero ?? '', nome || ''].join('|');
+  const mapa = {};
+  const get = (turma, numero, nome) => mapa[chave(turma, numero, nome)] = mapa[chave(turma, numero, nome)]
+    || { nome, numero, turma: turma || '—', saldo: null, cred: 0, deb: 0, juros: 0, taxas: 0, bonus: 0, mov: 0 };
+  (contas || []).forEach(c => { get(c.turma, c.numero, c.nome).saldo = c.saldo; });
+  linhas.forEach(l => {
+    const g = get(l.turma_nome, l.aluno_numero, l.aluno_nome);
+    const v = Math.abs(Number(l.valor));
+    g.mov += 1;
+    if (calcularSinalClasse(l.tipo, l.valor).sinal === '+') g.cred += v; else g.deb += v;
+    if (l.tipo === 'rendimento_automatico' || l.tipo === 'rendimento_manual') g.juros += Number(l.valor);
+    if (l.tipo === 'taxa_debito') g.taxas += v;
+    if (l.tipo === 'taxa_bonus') g.bonus += v;
+  });
+  linhasPorAluno = Object.values(mapa);
+  renderPorAluno();
+}
+function renderPorAluno(){
+  const q = ($('rel-aluno-busca').value || '').trim().toLowerCase();
+  const { col, dir } = ordemPorAluno;
+  const lista = linhasPorAluno
+    .filter(a => !q || (a.nome || '').toLowerCase().includes(q) || (a.turma || '').toLowerCase().includes(q))
+    .sort((a, b) => {
+      if (col === 'nome' || col === 'turma') return dir * String(a[col] ?? '').localeCompare(String(b[col] ?? ''), 'pt-BR', { numeric: true });
+      return dir * ((a[col] ?? -Infinity) - (b[col] ?? -Infinity));
+    });
+  const el = $('rel-por-aluno');
+  if (!lista.length) { el.innerHTML = '<p style="color:var(--ink-soft); font-size:13px;">Nenhum aluno encontrado.</p>'; return; }
+  const seta = (c) => ordemPorAluno.col === c ? (ordemPorAluno.dir > 0 ? ' ▲' : ' ▼') : '';
+  const th = (c, rot, dir2 = 'right') => `<th data-ord="${c}" style="text-align:${dir2}; cursor:pointer; white-space:nowrap;">${rot}${seta(c)}</th>`;
+  const soma = (k) => lista.reduce((t, a) => t + (a[k] || 0), 0);
+  el.innerHTML = `<table class="ledger">
+    <thead><tr>${th('nome', 'Aluno', 'left')}${th('turma', 'Turma', 'left')}${th('saldo', 'Saldo hoje')}${th('cred', 'Créditos')}${th('deb', 'Débitos')}${th('juros', 'Juros líq.')}${th('taxas', 'Taxas')}${th('bonus', 'Bônus')}</tr></thead>
+    <tbody>${lista.map(a => `<tr>
+      <td>${a.nome}${a.numero ? ' (Nº ' + a.numero + ')' : ''}</td>
+      <td>${a.turma}</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${a.saldo == null ? '—' : fmt(a.saldo)}</td>
+      <td class="mono valor-pos" style="text-align:right;">${fmt(a.cred)}</td>
+      <td class="mono valor-neg" style="text-align:right;">${fmt(a.deb)}</td>
+      <td class="mono ${a.juros < 0 ? 'valor-neg' : 'valor-pos'}" style="text-align:right;">${fmt(a.juros)}</td>
+      <td class="mono valor-neg" style="text-align:right;">${fmt(a.taxas)}</td>
+      <td class="mono valor-pos" style="text-align:right;">${fmt(a.bonus)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="2" style="font-weight:700;">Total (${lista.length} aluno${lista.length === 1 ? '' : 's'})</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${fmt(soma('saldo'))}</td>
+      <td class="mono valor-pos" style="text-align:right; font-weight:700;">${fmt(soma('cred'))}</td>
+      <td class="mono valor-neg" style="text-align:right; font-weight:700;">${fmt(soma('deb'))}</td>
+      <td class="mono" style="text-align:right; font-weight:700;">${fmt(soma('juros'))}</td>
+      <td class="mono valor-neg" style="text-align:right; font-weight:700;">${fmt(soma('taxas'))}</td>
+      <td class="mono valor-pos" style="text-align:right; font-weight:700;">${fmt(soma('bonus'))}</td></tr></tfoot>
+  </table>`;
+}
+$('rel-por-aluno').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-ord]'); if (!t) return;
+  const c = t.dataset.ord;
+  ordemPorAluno = { col: c, dir: ordemPorAluno.col === c ? -ordemPorAluno.dir : (c === 'nome' || c === 'turma' ? 1 : -1) };
+  renderPorAluno();
+});
+$('rel-aluno-busca').addEventListener('input', renderPorAluno);
+$('btn-exportar-alunos').addEventListener('click', () => {
+  if (!linhasPorAluno.length) return;
+  const n = (v) => v == null ? '' : String(Number(v).toFixed(2)).replace('.', ',');
+  const csv = [['Aluno','Numero','Turma','Saldo hoje','Creditos','Debitos','Juros liquidos','Taxas','Bonus']]
+    .concat(linhasPorAluno.slice().sort((a, b) => String(a.turma).localeCompare(String(b.turma), 'pt-BR', { numeric: true }) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
+      .map(a => [a.nome, a.numero ?? '', a.turma, n(a.saldo), n(a.cred), n(a.deb), n(a.juros), n(a.taxas), n(a.bonus)]))
+    .map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'relatorio-por-aluno.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 function renderComposicao(linhas){
   const el = $('rel-composicao');
