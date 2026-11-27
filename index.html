@@ -671,6 +671,14 @@ function atualizarTemaOuro(liberado){
   op.disabled = !liberado;
   op.textContent = liberado ? '💎 Mestre Ouro' : '🔒 Mestre Ouro (medalha 💎)';
   let salvo = null; try { salvo = localStorage.getItem('wlbank-tema'); } catch (_) {}
+  if (liberado) {                                  // quem tem a medalha entra com o tema Ouro, a menos que já tenha escolhido outro de propósito
+    let manual = false; try { manual = !!localStorage.getItem('wlbank-tema-manual-' + E.ra); } catch (_) {}
+    if (!manual && salvo !== 'ouro') {
+      try { localStorage.setItem('wlbank-tema', 'ouro'); } catch (_) {}
+      $('seletor-tema').value = 'ouro';
+      document.documentElement.setAttribute('data-theme', 'ouro');
+    }
+  }
   if (!liberado && salvo === 'ouro') {            // outro aluno no mesmo aparelho: volta ao tema automático
     try { localStorage.setItem('wlbank-tema', 'sistema'); } catch (_) {}
     $('seletor-tema').value = 'sistema';
@@ -952,6 +960,8 @@ $('seletor-tema').value = localStorage.getItem('wlbank-tema') || 'sistema';
 $('seletor-tema').addEventListener('change', (e) => {
   const v = e.target.value;
   try { localStorage.setItem('wlbank-tema', v); } catch (_) {}
+  // escolha feita pelo aluno logado: daí em diante o tema Ouro não é mais aplicado sozinho para ele
+  try { if (typeof E !== 'undefined' && E && E.ra) localStorage.setItem('wlbank-tema-manual-' + E.ra, '1'); } catch (_) {}
   const escuro = v === 'escuro' || (v === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-theme', ['tropical','cidade','ouro'].includes(v) ? v : (escuro ? 'dark' : 'light'));
 });
