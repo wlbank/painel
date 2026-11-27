@@ -9,7 +9,7 @@
     const salvo = localStorage.getItem('wlbank-tema') || 'sistema';
     const sistemaEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const escuro = salvo === 'escuro' || (salvo === 'sistema' && sistemaEscuro);
-    document.documentElement.setAttribute('data-theme', ['tropical','cidade'].includes(salvo) ? salvo : (escuro ? 'dark' : 'light'));
+    document.documentElement.setAttribute('data-theme', ['tropical','cidade','ouro'].includes(salvo) ? salvo : (escuro ? 'dark' : 'light'));
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -226,6 +226,53 @@
 
   /* engajamento: medalhas, semana, gráfico, meta, simulador */
   :root{ --chart:#6C4DFF; }
+
+  /* ===== Tema Mestre Ouro: liberado com a medalha 💎 dos 200 WL ===== */
+  [data-theme="ouro"]{
+    --bg:#120D04; --bg-dots:rgba(255,210,90,.06);
+    --card:#2A210E; --card-2:#3B2D12; --text:#FFF6DC; --soft:#E8D399; --line:#0E0903;
+    --banana:#FFD34E; --tomato:#FF7A59; --mint:#7CF2C9; --bubble:#F5B342; --grape:#B98CFF; --sky:#8FD8FF;
+    --green-ink:#7CF2C9; --red-ink:#FF9C86;
+    --ink-soft:#E8D399; --paper:#FFF6DC; --green:#7CF2C9; --red:#FF9C86; --border-rgb:255,246,220; --on-bg:#FFF6DC; --chart:#FFD34E;
+  }
+  html[data-theme="ouro"], html[data-theme="ouro"] body{
+    background-color:#120D04;
+    background-image:
+      radial-gradient(120% 70% at 50% -10%, rgba(255,200,60,.30), transparent 62%),
+      repeating-linear-gradient(45deg, rgba(255,210,90,.055) 0 1px, transparent 1px 40px),
+      repeating-linear-gradient(-45deg, rgba(255,210,90,.055) 0 1px, transparent 1px 40px),
+      linear-gradient(180deg,#120D04 0%,#2A1D07 100%);
+    background-attachment:fixed;
+  }
+  html[data-theme="ouro"] body::before{
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20240%20240'%3E%3Cpath%20d='M30%2031Q30%2040%2039%2040Q30%2040%2030%2049Q30%2040%2021%2040Q30%2040%2030%2031Z'%20fill='%23FFD966'%20opacity='0.9'/%3E%3Cpath%20d='M120%2012Q120%2018%20126%2018Q120%2018%20120%2024Q120%2018%20114%2018Q120%2018%20120%2012Z'%20fill='%23FFD966'%20opacity='0.7'/%3E%3Cpath%20d='M205%2060Q205%2070%20215%2070Q205%2070%20205%2080Q205%2070%20195%2070Q205%2070%20205%2060Z'%20fill='%23FFD966'%20opacity='0.85'/%3E%3Cpath%20d='M70%20115Q70%20120%2075%20120Q70%20120%2070%20125Q70%20120%2065%20120Q70%20120%2070%20115Z'%20fill='%23FFD966'%20opacity='0.6'/%3E%3Cpath%20d='M165%20142Q165%20150%20173%20150Q165%20150%20165%20158Q165%20150%20157%20150Q165%20150%20165%20142Z'%20fill='%23FFD966'%20opacity='0.8'/%3E%3Cpath%20d='M24%20194Q24%20200%2030%20200Q24%20200%2024%20206Q24%20200%2018%20200Q24%20200%2024%20194Z'%20fill='%23FFD966'%20opacity='0.65'/%3E%3Cpath%20d='M110%20205Q110%20215%20120%20215Q110%20215%20110%20225Q110%20215%20100%20215Q110%20215%20110%20205Z'%20fill='%23FFD966'%20opacity='0.9'/%3E%3Cpath%20d='M225%20219Q225%20225%20231%20225Q225%20225%20225%20231Q225%20225%20219%20225Q225%20225%20225%20219Z'%20fill='%23FFD966'%20opacity='0.6'/%3E%3Cpath%20d='M190%208Q190%2012%20194%2012Q190%2012%20190%2016Q190%2012%20186%2012Q190%2012%20190%208Z'%20fill='%23FFD966'%20opacity='0.5'/%3E%3C/svg%3E"); background-size:240px 240px; opacity:.55;
+  }
+  html[data-theme="ouro"] body::after{ content:none; }
+  html[data-theme="ouro"] #app{ position:relative; z-index:1; }
+  @media (prefers-reduced-motion: no-preference){
+    html[data-theme="ouro"] body::before{ animation:ouro-brilha 5s ease-in-out infinite alternate; }
+    @keyframes ouro-brilha{ from{ opacity:.25 } to{ opacity:.7 } }
+    [data-theme="ouro"] .cofre::after{ animation:ouro-varre 5.5s ease-in-out infinite; }
+    @keyframes ouro-varre{ 0%,55%{ transform:translateX(-130%) } 100%{ transform:translateX(130%) } }
+  }
+  [data-theme="ouro"] .wordmark h1{ color:#FFE9A8; text-shadow:0 2px 0 #6B4A00, 0 0 14px rgba(255,200,60,.75); }
+  [data-theme="ouro"] .wordmark h1::after{ content:' 👑'; font-size:.8em; }
+  [data-theme="ouro"] .moeda{ background:linear-gradient(145deg,#FFF2B8,#F2B01E 55%,#B87A06); color:#3A2600; border-color:#6B4A00; }
+  [data-theme="ouro"] .secao h3, [data-theme="ouro"] .login-card h1{ color:#FFE08A; text-shadow:0 3px 0 #0E0903, 2px 0 0 #0E0903, -2px 0 0 #0E0903, 0 -2px 0 #0E0903, 0 0 16px rgba(255,200,60,.55); }
+  [data-theme="ouro"] .painel, [data-theme="ouro"] .login-card, [data-theme="ouro"] .balao .fala{ border-color:#D9A21F; box-shadow:0 6px 0 #7A5200, 0 0 20px rgba(255,200,60,.16); }
+  [data-theme="ouro"] .balao .fala::before{ border-color:#D9A21F; }
+  [data-theme="ouro"] .balao .fala::after{ content:'💎 Mestre da poupança'; display:block; margin-top:7px; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:#FFD34E; }
+  [data-theme="ouro"] .cofre{ position:relative; overflow:hidden; color:#2E1D00; border-color:#FFE08A;
+    background:linear-gradient(135deg,#8A5A00 0%,#E9AE1B 20%,#FFF2B8 42%,#F2B01E 60%,#B87A06 100%);
+    box-shadow:0 8px 0 #7A5200, 0 0 34px rgba(255,200,60,.5); }
+  [data-theme="ouro"] .cofre::after{ content:''; position:absolute; top:0; bottom:0; left:0; width:45%; pointer-events:none;
+    background:linear-gradient(100deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%); transform:translateX(-130%); }
+  [data-theme="ouro"] .cofre .taxa{ background:#FFF6DC; color:#2E1D00; border-color:#6B4A00; box-shadow:0 3px 0 #6B4A00; }
+  [data-theme="ouro"] .cofre .valor{ text-shadow:0 2px 0 rgba(255,255,255,.35); }
+  [data-theme="ouro"] .med{ border-color:#6B4A00; box-shadow:0 4px 0 #6B4A00, 0 0 12px rgba(255,200,60,.35); }
+  [data-theme="ouro"] .btn-gold{ background:linear-gradient(180deg,#FFE88A,#F2B01E); box-shadow:0 5px 0 #7A5200, 0 0 18px rgba(255,200,60,.4); }
+  [data-theme="ouro"] button:focus-visible, [data-theme="ouro"] input:focus-visible, [data-theme="ouro"] select:focus-visible{ outline-color:#FFD34E; }
   [data-theme="dark"]{ --chart:#5CF0BE; }
   [data-theme="tropical"]{ --chart:#19F0C4; }
   .nota{ font-size:12.5px; color:var(--soft); margin:10px 2px 6px; line-height:1.4; font-weight:700; }
@@ -305,6 +352,7 @@
       <option value="escuro">🌙 Escuro</option>
       <option value="tropical">🌴 Neon Tropical</option>
       <option value="cidade">🌆 Cidade Neon</option>
+      <option value="ouro" disabled>🔒 Mestre Ouro (medalha 💎)</option>
     </select>
   </header>
 
@@ -580,7 +628,7 @@ const MEDALHAS = [
   { id:'alta',     ico:'🚀', nome:'Em alta',              dica:'Ter hoje mais WL do que tinha 7 dias atrás.', ok:() => { if (!cobre(7)) return false; const b = saldoAte(E.agora - 7 * DIA_MS); return b !== null && E.saldo > b; } },
   { id:'s50',      ico:'🐷', nome:'Cofrinho cheio',       dica:'Chegar a ' + fmt(50) + ' guardados.', ok:() => E.saldo >= 50 },
   { id:'s100',     ico:'🏦', nome:'Poupador',             dica:'Chegar a ' + fmt(100) + ' guardados.', ok:() => E.saldo >= 100 },
-  { id:'s200',     ico:'💎', nome:'Mestre da poupança',   dica:'Chegar a ' + fmt(200) + ' guardados.', ok:() => E.saldo >= 200 },
+  { id:'s200',     ico:'💎', nome:'Mestre da poupança',   dica:'Chegar a ' + fmt(200) + ' guardados. Libera o tema 💎 Mestre Ouro!', ok:() => E.saldo >= 200 },
   { id:'meta',     ico:'🎯', nome:'Meta batida',          dica:'Definir uma meta em "Minha meta" e alcançá-la.', ok:() => !!(E.perfil.meta && E.saldo >= E.perfil.meta.valor) },
   { id:'sim',      ico:'🧮', nome:'Planejador',           dica:'Brincar com o simulador de juros.', ok:() => E.perfil.sim }
 ];
@@ -607,6 +655,20 @@ function renderEngajamento(data){
   } catch (e) { console.warn('engajamento', e); }
 }
 
+// ---- Tema Mestre Ouro: só quem já ganhou a medalha dos 200 (a medalha fica guardada, mesmo se o saldo cair depois)
+function atualizarTemaOuro(liberado){
+  const op = $('seletor-tema').querySelector('option[value="ouro"]');
+  if (!op) return;
+  op.disabled = !liberado;
+  op.textContent = liberado ? '💎 Mestre Ouro' : '🔒 Mestre Ouro (medalha 💎)';
+  let salvo = null; try { salvo = localStorage.getItem('wlbank-tema'); } catch (_) {}
+  if (!liberado && salvo === 'ouro') {            // outro aluno no mesmo aparelho: volta ao tema automático
+    try { localStorage.setItem('wlbank-tema', 'sistema'); } catch (_) {}
+    $('seletor-tema').value = 'sistema';
+    document.documentElement.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+}
+
 // ---- Medalhas
 let _medSel = null;
 function renderMedalhas(){
@@ -618,6 +680,7 @@ function renderMedalhas(){
     if (ok && !E.perfil.ganhas[m.id]) { E.perfil.ganhas[m.id] = agoraISO; novas.push(m); }
   });
   const ganhou = (id) => !!E.perfil.ganhas[id];
+  atualizarTemaOuro(ganhou('s200'));
   const total = MEDALHAS.filter(m => ganhou(m.id)).length;
   $('med-resumo').textContent = `${total} de ${MEDALHAS.length} medalhas conquistadas`;
   $('med-grid').innerHTML = MEDALHAS.map((m, i) => `
@@ -636,7 +699,9 @@ function renderMedalhas(){
   $('med-grid').querySelectorAll('.med-item').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.med)));
   if (_medSel) mostrar(_medSel);
   if (novas.length && E.perfil.existia) {
-    toast(novas.length === 1 ? `🏅 Nova medalha: ${novas[0].nome}!` : `🏅 ${novas.length} medalhas novas!`);
+    let msg = novas.length === 1 ? `🏅 Nova medalha: ${novas[0].nome}!` : `🏅 ${novas.length} medalhas novas!`;
+    if (novas.some(m => m.id === 's200')) msg += ' 🎨 Você liberou o tema Mestre Ouro (veja no seletor de temas)!';
+    toast(msg);
   }
   salvarPerfil();
 }
@@ -879,7 +944,7 @@ $('seletor-tema').addEventListener('change', (e) => {
   const v = e.target.value;
   try { localStorage.setItem('wlbank-tema', v); } catch (_) {}
   const escuro = v === 'escuro' || (v === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.setAttribute('data-theme', ['tropical','cidade'].includes(v) ? v : (escuro ? 'dark' : 'light'));
+  document.documentElement.setAttribute('data-theme', ['tropical','cidade','ouro'].includes(v) ? v : (escuro ? 'dark' : 'light'));
 });
 
 function renderDados(data){
